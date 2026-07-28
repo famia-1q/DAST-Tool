@@ -32,7 +32,6 @@ def run_zap_scan(url):
 def run_nikto_scan(url):
     """Runs Nikto second to check the web server."""
     print(f"\n[Orchestrator] 🔍 STEP 2: Starting Nikto scan for: {url}")
-    # UPDATED: Using the official GitHub Container Registry (ghcr.io) image
     cmd = [
         "docker", "run", "--rm", "-v", f"{os.getcwd()}/orchestrator:/tmp",
         "ghcr.io/sullo/nikto:latest", "-h", url, "-Format", "json", "-o", "/tmp/nikto.json"
@@ -46,7 +45,7 @@ def run_nikto_scan(url):
         return None
 
 def run_mobsf_scan(file_path):
-    """Handles mobile binary scans (unchanged)."""
+    """Handles mobile binary scans."""
     print(f"\n[Orchestrator] 📱 Preparing MobSF scan for: {file_path}")
     temp_dir = "orchestrator/temp_scan"
     os.makedirs(temp_dir, exist_ok=True)
@@ -90,7 +89,6 @@ if __name__ == "__main__":
     input_type = classify_input(target)
 
     if input_type == "url":
-        # SEQUENTIAL WORKFLOW: ZAP first, then Nikto
         print("=" * 50)
         print("  SEQUENTIAL SCAN MODE: ZAP → Nikto")
         print("=" * 50)
@@ -108,6 +106,5 @@ if __name__ == "__main__":
         trigger_webhook(reports)
 
     elif input_type == "mobsf":
-        # Mobile scan (no Nikto needed for mobile)
         report = run_mobsf_scan(target)
         trigger_webhook([{"engine": "MobSF", "file": report}])
