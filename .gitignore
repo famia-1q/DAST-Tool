@@ -13,3 +13,4 @@ orchestrator/temp_*/
 reports/
 __pycache__/
 *.pyc
+*.yaml
