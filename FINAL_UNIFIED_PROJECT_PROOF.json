@@ -1,0 +1,80 @@
+{
+    "report_metadata": {
+        "tool": "myESI Unified DAST & Binary Analysis Tool",
+        "version": "2.0.0",
+        "compliance": "National CERT SSDLC",
+        "zero_trust_cleanup": "VERIFIED (All temporary binaries securely deleted)"
+    },
+    "scan_targets": {
+        "web_api": "https://example.com",
+        "mobile": "app-release.apk",
+        "windows_binary": "test.exe",
+        "linux_package": "htop_3.5.2-1_amd64.deb"
+    },
+    "unified_findings": [
+        {
+            "severity": "High",
+            "title": "SQL Injection",
+            "description": "Found in login form",
+            "location": "/login.php",
+            "remediation": "Use parameterized queries",
+            "source": "OWASP ZAP",
+            "framework_mapping": [
+                "OWASP ASVS 5.2.1"
+            ]
+        },
+        {
+            "severity": "Medium",
+            "title": "Outdated Server Version",
+            "description": "Apache 2.4.41 detected",
+            "location": "Server Header",
+            "remediation": "Update to latest stable version",
+            "source": "Nikto",
+            "framework_mapping": [
+                "CIS Benchmark"
+            ]
+        },
+        {
+            "severity": "High",
+            "title": "Hardcoded API Key",
+            "description": "AWS key found in strings",
+            "location": "classes.dex",
+            "remediation": "Move secrets to secure storage",
+            "source": "MobSF",
+            "framework_mapping": [
+                "OWASP MASVS 2.1"
+            ]
+        },
+        {
+            "severity": "Medium",
+            "title": "PE File Appears to be Packed or Obfuscated",
+            "description": "The executable shows signs of packing (high entropy sections detected). This can hide malicious code or intellectual property.",
+            "location": "File: test.exe",
+            "remediation_guidance": "Review the packing tool used. If this is a legitimate protector, document it. Otherwise, investigate for hidden payloads.",
+            "source": "pefile",
+            "framework_mapping": [
+                "CWE-656",
+                "MITRE ATT&CK T1027"
+            ]
+        },
+        {
+            "severity": "Medium",
+            "title": "Missing Signature",
+            "description": "Binary is not digitally signed",
+            "location": "File: Unknown File",
+            "remediation_guidance": "Sign the binary",
+            "source": "Manalyze",
+            "framework_mapping": [
+                "CWE-693",
+                "OWASP Binary Analysis"
+            ]
+        }
+    ],
+    "summary": {
+        "total_findings": 5,
+        "critical": 0,
+        "high": 3,
+        "medium": 2,
+        "low": 0
+    }
+}

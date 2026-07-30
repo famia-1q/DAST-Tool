@@ -1,0 +1,21 @@
+
+# --- DAST-Tool Cleanup Rules ---
+# Test artifacts and binaries
+*.exe
+*.deb
+*.apk
+*.ipa
+dummy_*
+test.apk
+test.exe
+test.deb
+
+# Generated reports and temporary orchestrator files
+reports/
+orchestrator/*.json
+orchestrator/*.yaml
+orchestrator/temp_*/
+
+# Python cache
+__pycache__/
+*.pyc

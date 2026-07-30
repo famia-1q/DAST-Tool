@@ -41,5 +41,5 @@ def parse_yara_deb_report(report_path):
                 "framework_mapping": ["MITRE ATT&CK", "CWE-506"]
             })
 
-    return findingso
+    return findings
 
