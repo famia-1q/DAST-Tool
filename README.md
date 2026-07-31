@@ -45,3 +45,33 @@ source venv/bin/activate
 
 # 3. Install dependencies
 pip install -r requirements.txt
+
+
+💻 Usage
+The orchestrator automatically detects the input type and routes it to the correct pipeline.
+Basic Command: python3 orchestrator/scan_runner.py <target>
+
+Examples:
+# Scan a website
+python3 orchestrator/scan_runner.py http://testphp.vulnweb.com
+
+# Scan a mobile app
+python3 orchestrator/scan_runner.py app-release.apk
+
+# Scan a Windows executable
+python3 orchestrator/scan_runner.py suspicious_file.exe
+
+# Scan a Linux package
+python3 orchestrator/scan_runner.py package_1.0_amd64.deb
+
+What Happens:
+The tool identifies the pipeline and prints the execution sequence.
+It runs each tool, printing warnings if any fail (but continues running).
+It securely deletes all temporary files (Zero-Trust).
+It outputs a final JSON webhook payload ready for CI/CD integration.
+
+👥 Contributors
+Teammate A - Orchestrator Architecture, Web/Mobile Pipelines
+Teammate B - Adapter Development, EXE/DEB Pipelines, Schema Mapping
+📜 License
+This project is licensed under the MIT License.
