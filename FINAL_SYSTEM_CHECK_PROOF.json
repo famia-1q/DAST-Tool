@@ -1,0 +1,117 @@
+{
+  "tool": "myESI Unified DAST & Binary Analysis Tool",
+  "version": "2.0.0",
+  "compliance": "National CERT SSDLC",
+  "zero_trust_cleanup": "VERIFIED",
+  "total_findings": 9,
+  "unified_findings": [
+    {
+      "severity": "Medium",
+      "title": "PE File Appears to be Packed or Obfuscated",
+      "description": "The executable shows signs of packing (high entropy sections detected). This can hide malicious code or intellectual property.",
+      "location": "File: malware.exe",
+      "remediation_guidance": "Review the packing tool used. If this is a legitimate protector, document it. Otherwise, investigate for hidden payloads.",
+      "source": "pefile",
+      "framework_mapping": [
+        "CWE-656",
+        "MITRE ATT&CK T1027"
+      ]
+    },
+    {
+      "severity": "High",
+      "title": "Suspicious API Imports Detected",
+      "description": "The executable imports APIs commonly used in malicious activities (e.g., VirtualAlloc, WriteProcessMemory, CreateRemoteThread).",
+      "location": "File: malware.exe",
+      "remediation_guidance": "Investigate why these memory-manipulation APIs are needed. Verify they are not being misused for code injection.",
+      "source": "pefile",
+      "framework_mapping": [
+        "CWE-78",
+        "MITRE ATT&CK T1055"
+      ]
+    },
+    {
+      "severity": "High",
+      "title": "Suspicious Import",
+      "description": "Found bad API",
+      "location": "File: Unknown File",
+      "remediation_guidance": "Review imports",
+      "source": "Manalyze",
+      "framework_mapping": [
+        "CWE-693",
+        "OWASP Binary Analysis"
+      ]
+    },
+    {
+      "severity": "High",
+      "title": "YARA Rule Match: Malware_Family_X",
+      "description": "The binary matches the YARA rule 'Malware_Family_X'. This indicates a known malware family, suspicious pattern, or specific packer.",
+      "location": "File: test_pefile.exe",
+      "remediation_guidance": "Investigate the matched rule. If this is a known malware family or malicious pattern, isolate the file and perform deep dynamic analysis.",
+      "source": "YARA",
+      "framework_mapping": [
+        "MITRE ATT&CK",
+        "CWE-506"
+      ]
+    },
+    {
+      "severity": "Medium",
+      "title": "Binary is Not Position Independent (No PIE)",
+      "description": "The binary is not compiled as position-independent, making it more vulnerable to memory corruption exploitation.",
+      "location": "File: htop",
+      "remediation_guidance": "Recompile the binary with -fPIE -pie flags to enable ASLR protection.",
+      "source": "LIEF",
+      "framework_mapping": [
+        "CWE-693",
+        "OWASP Binary Analysis"
+      ]
+    },
+    {
+      "severity": "Medium",
+      "title": "High Entropy Section Detected: .text",
+      "description": "Section '.text' has high entropy (7.50), indicating potential packing, compression, or obfuscation.",
+      "location": "File: htop, Section: .text",
+      "remediation_guidance": "Investigate the section contents. High entropy may indicate packing or embedded encrypted data.",
+      "source": "LIEF",
+      "framework_mapping": [
+        "CWE-656",
+        "MITRE ATT&CK T1027"
+      ]
+    },
+    {
+      "severity": "High",
+      "title": "Stack Canary is Disabled",
+      "description": "The binary does not have Stack Canary protection enabled, making it more vulnerable to memory corruption exploitation.",
+      "location": "File: htop",
+      "remediation_guidance": "Enable Stack Canary during compilation (e.g., using GCC/Clang flags) to improve binary security.",
+      "source": "checksec",
+      "framework_mapping": [
+        "CWE-693",
+        "OWASP Binary Analysis"
+      ]
+    },
+    {
+      "severity": "Medium",
+      "title": "PIE (Position Independent Executable) is Disabled",
+      "description": "The binary does not have PIE (Position Independent Executable) protection enabled, making it more vulnerable to memory corruption exploitation.",
+      "location": "File: htop",
+      "remediation_guidance": "Enable PIE (Position Independent Executable) during compilation (e.g., using GCC/Clang flags) to improve binary security.",
+      "source": "checksec",
+      "framework_mapping": [
+        "CWE-693",
+        "OWASP Binary Analysis"
+      ]
+    },
+    {
+      "severity": "High",
+      "title": "YARA Rule Match: Suspicious_Packer",
+      "description": "The extracted file 'test_deb_file.deb' matches the YARA rule 'Suspicious_Packer'. This indicates a known malware family, suspicious pattern, or specific packer.",
+      "location": "File: test_deb_file.deb",
+      "remediation_guidance": "Investigate the matched rule. If this is a known malicious pattern, isolate the package and perform deep dynamic analysis.",
+      "source": "YARA",
+      "framework_mapping": [
+        "MITRE ATT&CK",
+        "CWE-506"
+      ]
+    }
+  ]
+}
