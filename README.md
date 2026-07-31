@@ -1,5 +1,4 @@
-python3 << 'PYEOF'
-content = """# 🛡️ myESI Unified DAST & Binary Analysis Orchestrator
+ myESI Unified DAST & Binary Analysis Orchestrator
 
 A multi-platform security scanning tool designed to meet **National CERT SSDLC** advisory requirements. It automatically classifies inputs, routes them to specialized analysis pipelines, and enforces strict **Zero-Trust** artifact cleanup.
 
