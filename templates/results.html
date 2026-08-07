@@ -2,30 +2,109 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Scan Results - iSeeWaves</title>
+    <title>myESI Dashboard - Scan Results</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; padding: 20px; margin: 0; }
-        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
-        .success-banner { background: #d4edda; border-left: 4px solid #28a745; padding: 20px; margin-bottom: 30px; border-radius: 4px; }
-        .btn { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 10px 10px 10px 0; transition: transform 0.2s; }
-        .btn:hover { transform: translateY(-2px); }
-        .btn-secondary { background: #6c757d; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f6f9; color: #333; margin: 0; padding: 20px; }
+        .dashboard-container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00e5ff; padding-bottom: 15px; margin-bottom: 20px; }
+        .header h1 { color: #0a192f; margin: 0; }
+        .filters { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .filters label { font-weight: bold; color: #555; }
+        .filters select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { background: #0a192f; color: white; padding: 12px; text-align: left; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+        .source-badge { background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 12px; font-size: 0.85em; font-weight: bold; }
+        .sev-ring { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 8px; }
+        .sev-high { background-color: #dc2626; }
+        .sev-medium { background-color: #ea580c; }
+        .sev-low { background-color: #ca8a04; }
+        .sev-info { background-color: #2563eb; }
+        .fix-tracker { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; background: white; font-size: 0.9em; }
+        .btn { display: inline-block; background: #00e5ff; color: #0a192f; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px; }
+        .btn-secondary { background: #6c757d; color: white; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="success-banner">
-            <h2>✅ Scan Completed Successfully!</h2>
-            <p>Your security assessment has been completed. Download your audit-ready PDF report below.</p>
+    <div class="dashboard-container">
+        <div class="header">
+            <h1>🛡️ myESI Unified Security Dashboard</h1>
+            <a href="/report/{{ scan_result.scan_id }}" class="btn">📄 Download Audit PDF</a>
         </div>
-        <div style="margin-bottom: 30px;">
-            <p><strong>Scan ID:</strong> {{ scan_result.scan_id }}</p>
-            <p><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">Completed</span></p>
+
+        <div class="filters">
+            <label>Filter by Engine (IFR-UI-4):</label>
+            <select id="engineFilter" onchange="filterTable()">
+                <option value="all">All Engines</option>
+                <option value="OWASP ZAP">OWASP ZAP</option>
+                <option value="Nikto">Nikto</option>
+                <option value="MobSF">MobSF</option>
+            </select>
+            <label>Filter by Severity:</label>
+            <select id="severityFilter" onchange="filterTable()">
+                <option value="all">All Severities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+            </select>
+            <label>Filter by Status:</label>
+            <select id="statusFilter" onchange="filterTable()">
+                <option value="all">All Statuses</option>
+                <option value="Open">Open</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Fixed">Fixed</option>
+            </select>
         </div>
-        <div>
-            <a href="/report/{{ scan_result.scan_id }}" class="btn">📄 Download Official PDF Report</a>
-            <a href="/" class="btn btn-secondary">← Start New Scan</a>
-        </div>
+
+        <h2>Scan Findings (Single Pane of Glass)</h2>
+        <table id="findingsTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Severity</th>
+                    <th>Finding Title</th>
+                    <th>Source Engine (IFR-UI-3)</th>
+                    <th>Fix Status (IFR-UI-2)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in findings %}
+                <tr class="finding-row" data-engine="{{ f.source_engine }}" data-severity="{{ f.severity }}" data-status="{{ f.status }}">
+                    <td>{{ f.id }}</td>
+                    <td><span class="sev-ring sev-{{ f.severity|lower }}"></span>{{ f.severity }}</td>
+                    <td>{{ f.title }}</td>
+                    <td><span class="source-badge">{{ f.source_engine }}</span></td>
+                    <td>
+                        <select class="fix-tracker">
+                            <option {% if f.status == 'Open' %}selected{% endif %}>Open</option>
+                            <option {% if f.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                            <option {% if f.status == 'Fixed' %}selected{% endif %}>Fixed</option>
+                            <option>Wont-Fix</option>
+                        </select>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <a href="/" class="btn btn-secondary">← Start New Scan</a>
     </div>
+
+    <script>
+        function filterTable() {
+            const engine = document.getElementById('engineFilter').value;
+            const severity = document.getElementById('severityFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const rows = document.querySelectorAll('.finding-row');
+            rows.forEach(row => {
+                const rowEngine = row.getAttribute('data-engine');
+                const rowSev = row.getAttribute('data-severity');
+                const rowStatus = row.getAttribute('data-status');
+                const engineMatch = (engine === 'all' || rowEngine === engine);
+                const sevMatch = (severity === 'all' || rowSev === severity);
+                const statusMatch = (status === 'all' || rowStatus === status);
+                row.style.display = (engineMatch && sevMatch && statusMatch) ? '' : 'none';
+            });
+        }
+    </script>
 </body>
 </html>
