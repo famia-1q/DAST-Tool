@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>iSeeWaves - Unified Security Scanner</title>
     <style>
         :root { --bg-dark: #050a14; --bg-card: #0a192f; --accent-cyan: #00e5ff; --text-main: #e6f1ff; --text-muted: #8892b0; --border-color: #1e3a5f; }
@@ -10,36 +9,29 @@
         .navbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 50px; background: rgba(5, 10, 20, 0.9); border-bottom: 1px solid var(--border-color); }
         .logo-container { display: flex; align-items: center; font-size: 1.5rem; font-weight: bold; color: white; letter-spacing: 1px; }
         .logo-waves { color: var(--accent-cyan); margin-right: 5px; }
-        .btn-secured { border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 8px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; transition: all 0.3s; }
-        .btn-secured:hover { background: var(--accent-cyan); color: #000; }
         .main-container { max-width: 900px; margin: 60px auto; padding: 0 20px; flex: 1; }
-        .hero-text { text-align: center; margin-bottom: 50px; }
+        .hero-text { text-align: center; margin-bottom: 40px; }
         .badge { display: inline-block; border: 1px solid var(--border-color); padding: 8px 16px; border-radius: 20px; color: var(--accent-cyan); font-size: 0.85rem; font-weight: 600; letter-spacing: 1px; margin-bottom: 20px; background: rgba(0, 229, 255, 0.05); }
         h1 { font-size: 3.5rem; margin: 0 0 20px 0; line-height: 1.1; text-transform: uppercase; }
         h1 span { color: var(--accent-cyan); }
         .subtitle { color: var(--text-muted); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
         .scanner-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 40px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); }
-        .form-group { margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 10px; color: var(--accent-cyan); font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; }
         input[type="text"], input[type="url"], input[type="file"], select { width: 100%; padding: 15px; background: #02040a; border: 1px solid var(--border-color); border-radius: 6px; color: white; font-size: 1rem; box-sizing: border-box; transition: border-color 0.3s; }
         input:focus, select:focus { outline: none; border-color: var(--accent-cyan); }
         .btn-scan { background: transparent; border: 1px solid var(--accent-cyan); color: var(--accent-cyan); padding: 15px 30px; border-radius: 6px; font-size: 1.1rem; font-weight: bold; cursor: pointer; width: 100%; text-transform: uppercase; letter-spacing: 1px; transition: all 0.3s; margin-top: 10px; }
         .btn-scan:hover { background: var(--accent-cyan); color: #000; box-shadow: 0 0 20px rgba(0, 229, 255, 0.4); }
-        .alert { padding: 15px; border-radius: 6px; margin-bottom: 20px; background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; color: #dc3545; }
         .hidden { display: none; }
         .footer { text-align: center; padding: 30px; color: var(--text-muted); font-size: 0.8rem; border-top: 1px solid var(--border-color); margin-top: auto; }
     </style>
 </head>
 <body>
-
     <nav class="navbar">
         <div class="logo-container">
-            <span class="logo-waves">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>
-            </span>
+            <span class="logo-waves"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg></span>
             iSeeWaves
         </div>
-        <a href="#" class="btn-secured">Get Secured</a>
     </nav>
 
     <div class="main-container">
@@ -50,10 +42,12 @@
         </div>
 
         <div class="scanner-card">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}{% for category, message in messages %}<div class="alert">{{ message }}</div>{% endfor %}{% endif %}
-            {% endwith %}
             <form action="/scan" method="POST" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="client_name">Client / Organization Name</label>
+                    <input type="text" id="client_name" name="client_name" placeholder="e.g. Editute, Acme Corp, MyESI" required>
+                </div>
+
                 <div class="form-group">
                     <label for="target_type">Select Scan Vector</label>
                     <select id="target_type" name="target_type" required onchange="toggleInput()">
@@ -63,22 +57,23 @@
                         <option value="linux">Linux Package (.deb)</option>
                     </select>
                 </div>
+                
                 <div class="form-group" id="url_input">
                     <label for="url">Target URL</label>
                     <input type="url" id="url" name="url" placeholder="https://target-domain.com" pattern="https?://.+">
                 </div>
+                
                 <div class="form-group hidden" id="file_input">
                     <label for="file">Upload Artifact</label>
                     <input type="file" id="file" name="file" accept=".apk,.ipa,.exe,.deb">
                 </div>
-                <button type="submit" class="btn-scan"> Initialize Scan</button>
+                
+                <button type="submit" class="btn-scan">🚀 Initialize Scan</button>
             </form>
         </div>
     </div>
 
-    <div class="footer">
-        © 2026 iSeeWaves Global Cybersecurity. All Rights Reserved. | Zero-Trust Processing Active.
-    </div>
+    <div class="footer">© 2026 iSeeWaves Global Cybersecurity. All Rights Reserved. | Zero-Trust Processing Active.</div>
 
     <script>
         function toggleInput() {
