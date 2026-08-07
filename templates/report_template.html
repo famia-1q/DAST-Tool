@@ -2,17 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>iSeeWaves - Penetration Test Report of Findings</title>
+<title>iSeeWaves - {{ report_title }}</title>
 <style>
-    @page { size: A4; margin: 0; background-color: #1a1f2e; }
-    @page cover { margin: 0; }
-    @page content { margin: 2cm; @bottom-center { content: counter(page); font-family: Arial; font-size: 10pt; color: #9ca3af; } }
-
+    @page { size: A4; margin: 0; background-color: #1a1f2e; @bottom-center { content: counter(page); font-family: Arial; font-size: 10pt; color: #9ca3af; } }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.5; color: #ffffff; background-color: #1a1f2e; }
 
-    /* COVER PAGE */
-    .cover { page: cover; background-color: #1a1f2e; color: #ffffff; height: 297mm; padding: 60px 70px; page-break-after: always; display: flex; flex-direction: column; position: relative; }
+    .cover { background-color: #1a1f2e; color: #ffffff; height: 297mm; padding: 60px 70px; page-break-after: always; display: flex; flex-direction: column; position: relative; }
     .cover-header { margin-bottom: 60px; }
     .company-name { font-size: 26pt; font-weight: bold; color: #7fff00; margin-bottom: 5px; }
     .company-tagline { font-size: 10pt; color: #9ca3af; letter-spacing: 1px; }
@@ -25,12 +21,10 @@
     .date-text { color: #ffffff; }
     .version-text { color: #9ca3af; font-style: italic; }
     .cover-footer { border-top: 1px solid #4b5563; padding-top: 15px; text-align: center; font-size: 9pt; color: #9ca3af; position: absolute; bottom: 40px; left: 70px; right: 70px; }
-    .cover-footer p { margin: 3px 0; }
 
-    /* CONTENT PAGES - SAME DARK THEME */
-    .content { page: content; background-color: #1a1f2e; color: #ffffff; padding: 40px 50px; min-height: 297mm; page-break-after: always; }
+    .content { background-color: #1a1f2e; color: #ffffff; padding: 40px 70px; min-height: 297mm; page-break-after: always; }
     .content:last-child { page-break-after: auto; }
-
+    
     h1 { font-size: 22pt; font-weight: bold; color: #ffffff; margin-top: 20px; margin-bottom: 20px; border-bottom: 3px solid #7fff00; padding-bottom: 8px; }
     h2 { font-size: 16pt; font-weight: bold; color: #7fff00; margin-top: 25px; margin-bottom: 15px; border-bottom: 1px solid #7fff00; padding-bottom: 5px; }
     h3 { font-size: 13pt; font-weight: bold; color: #7fff00; margin-top: 20px; margin-bottom: 10px; }
@@ -40,15 +34,12 @@
     li { margin-bottom: 6px; color: #ffffff; }
     strong { color: #7fff00; }
 
-    /* TABLES - DARK THEME */
-    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 10pt; page-break-inside: avoid; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 10pt; }
     th { background-color: #0f1419; color: #7fff00; font-weight: bold; padding: 10px 12px; border: 1px solid #7fff00; text-align: left; }
     td { padding: 8px 12px; border: 1px solid #4b5563; vertical-align: top; color: #ffffff; }
     tr:nth-child(even) td { background-color: #252b3d; }
-    tr:nth-child(odd) td { background-color: #1a1f2e; }
     .table-caption { font-size: 10pt; font-style: italic; color: #9ca3af; margin-top: 5px; margin-bottom: 20px; text-align: center; }
 
-    /* FINDINGS */
     .finding-box { border: 1px solid #4b5563; border-left: 5px solid #7fff00; padding: 15px 20px; margin: 20px 0; background-color: #0f1419; page-break-inside: avoid; }
     .finding-title { font-size: 14pt; font-weight: bold; color: #ffffff; margin-bottom: 10px; }
     .finding-meta { font-size: 10pt; color: #9ca3af; margin-bottom: 15px; }
@@ -57,23 +48,16 @@
     .sev-low { color: #eab308; font-weight: bold; }
     .sev-info { color: #3b82f6; font-weight: bold; }
     .source-badge { background-color: #0f1419; color: #7fff00; padding: 3px 8px; border: 1px solid #7fff00; border-radius: 3px; font-size: 9pt; font-weight: bold; }
-
-    /* CODE BLOCKS */
-    pre { background-color: #0f1419; border: 1px solid #4b5563; border-left: 4px solid #7fff00; padding: 12px 15px; font-family: "Courier New", monospace; font-size: 9pt; margin: 15px 0; white-space: pre-wrap; color: #e5e7eb; }
-    code { font-family: "Courier New", monospace; font-size: 9pt; background-color: #0f1419; padding: 2px 4px; color: #7fff00; }
 </style>
 </head>
 <body>
 
-<!-- COVER PAGE -->
 <div class="cover">
     <div class="cover-header">
         <div class="company-name">iSeeWaves (Private) Limited.</div>
         <div class="company-tagline">OFFENSIVE SECURITY | GRC ADVISORY | SUPPLY CHAIN SECURITY</div>
     </div>
-    <div class="report-title-box">
-        <div class="report-title">Web Application Penetration Test Report of Findings</div>
-    </div>
+    <div class="report-title-box"><div class="report-title">{{ report_title }}</div></div>
     <div class="client-name">ACME CORP</div>
     <div class="client-details">
         <p class="target-text">Acme Corp (acmecorp.com)</p>
@@ -86,24 +70,17 @@
     </div>
 </div>
 
-<!-- CONFIDENTIALITY -->
 <div class="content">
     <h1>Statement of Confidentiality</h1>
-    <p>The contents of this document have been developed by iSeeWaves (Private) Limited. iSeeWaves considers the contents of this document to be proprietary and business confidential information. This information is to be used only in the performance of its intended use. This document may not be released to another vendor, business partner or contractor without prior written consent from iSeeWaves. Additionally, no portion of this document may be communicated, reproduced, copied or distributed without the prior consent of iSeeWaves.</p>
-    <p>The contents of this document do not constitute legal advice. iSeeWaves's offer of services that relate to compliance, litigation or other legal interests are not intended as legal counsel and should not be taken as such.</p>
+    <p>The contents of this document have been developed by iSeeWaves (Private) Limited. iSeeWaves considers the contents of this document to be proprietary and business confidential information. This information is to be used only in the performance of its intended use. This document may not be released to another vendor, business partner or contractor without prior written consent from iSeeWaves.</p>
 </div>
 
-<!-- ENGAGEMENT CONTACTS -->
 <div class="content">
     <h1>Engagement Contacts</h1>
     <h2>Acme Corp Contacts</h2>
     <table>
         <tr><th>Primary Contact</th><th>Title</th><th>Primary Contact Email</th></tr>
         <tr><td>John Smith</td><td>Chief Executive Officer</td><td>ceo@acmecorp.com</td></tr>
-    </table>
-    <table>
-        <tr><th>Secondary Contact</th><th>Title</th><th>Secondary Contact Email</th></tr>
-        <tr><td>Jane Doe</td><td>Chief Technical Officer</td><td>cto@acmecorp.com</td></tr>
     </table>
     <h2>Assessor Contact</h2>
     <table>
@@ -112,47 +89,30 @@
     </table>
 </div>
 
-<!-- EXECUTIVE SUMMARY -->
 <div class="content">
     <h1>Executive Summary</h1>
-    <p>Acme Corp ("Acme Corp" herein) contracted iSeeWaves (Private) Limited to perform a Web Application Penetration Test of Acme Corp's externally facing web application to identify security weaknesses, determine the impact to Acme Corp, document all findings in a clear and repeatable manner, and provide remediation recommendations.</p>
-
+    <p>Acme Corp ("Acme Corp" herein) contracted iSeeWaves (Private) Limited to perform a security assessment to identify security weaknesses, determine the impact, document all findings in a clear and repeatable manner, and provide remediation recommendations.</p>
     <h2>Approach</h2>
-    <p>iSeeWaves performed testing under a "black box" approach on {{ scan_date }} without credentials or any advance knowledge of Acme Corp's externally facing environment with the goal of identifying unknown weaknesses. Testing was performed from a non-evasive standpoint with the goal of uncovering as many misconfigurations and vulnerabilities as possible.</p>
-
+    <p>iSeeWaves performed testing under a "black box" approach on {{ scan_date }} without credentials or any advance knowledge of Acme Corp's environment. Testing was performed from a non-evasive standpoint with the goal of uncovering as many misconfigurations and vulnerabilities as possible.</p>
     <h2>Scope</h2>
-    <p>The scope of this assessment was the acmecorp.com web application and associated API endpoints.</p>
-
+    <p>The scope of this assessment was the Acme Corp target artifact and associated endpoints.</p>
     <h3>In-Scope Assets</h3>
     <table>
         <tr><th>Host/URL/IP Address</th><th>Description</th></tr>
-        <tr><td>acmecorp.com</td><td>Acme Corp Web Application</td></tr>
+        <tr><td>acmecorp.com</td><td>Acme Corp Target</td></tr>
         <tr><td>{{ scan_id }}</td><td>Scan Identifier</td></tr>
     </table>
     <p class="table-caption">Table 1: Scope Details</p>
-
-    <h2>Assessment Overview and Recommendations</h2>
-    <p>During the web application penetration test against Acme Corp, iSeeWaves identified findings that threaten the confidentiality, integrity, and availability of Acme Corp's information systems. The findings were categorized by severity level. Acme Corp should create a remediation plan based on the Remediation Summary section of this report, addressing all high findings as soon as possible.</p>
 </div>
 
-<!-- SUMMARY OF FINDINGS -->
 <div class="content">
     <h1>Summary of Findings</h1>
     <p>During the course of testing, iSeeWaves uncovered findings that pose a material risk to Acme Corp's information systems. The below table provides a summary of the findings by severity level.</p>
-
     <table>
         <tr><th>Finding Severity</th><th>High</th><th>Medium</th><th>Low</th><th>Info</th><th>Total</th></tr>
-        <tr>
-            <td><strong>Count</strong></td>
-            <td class="sev-high">{{ high_count }}</td>
-            <td class="sev-medium">{{ medium_count }}</td>
-            <td class="sev-low">{{ low_count }}</td>
-            <td class="sev-info">{{ info_count }}</td>
-            <td><strong>{{ total_count }}</strong></td>
-        </tr>
+        <tr><td><strong>Count</strong></td><td class="sev-high">{{ high_count }}</td><td class="sev-medium">{{ medium_count }}</td><td class="sev-low">{{ low_count }}</td><td class="sev-info">{{ info_count }}</td><td><strong>{{ total_count }}</strong></td></tr>
     </table>
     <p class="table-caption">Table 2: Severity Summary</p>
-
     <table>
         <tr><th>Finding #</th><th>Severity Level</th><th>Finding Name</th><th>Source Engine</th></tr>
         {% for f in findings %}
@@ -162,105 +122,63 @@
     <p class="table-caption">Table 3: Finding List</p>
 </div>
 
-<!-- TECHNICAL FINDINGS -->
 <div class="content">
     <h1>Technical Findings Details</h1>
     {% for f in findings %}
     <div class="finding-box">
         <div class="finding-title">{{ f.id }}. {{ f.title }} - <span class="sev-{{ f.severity|lower }}">{{ f.severity }}</span></div>
-        <div class="finding-meta">
-            <strong>Source:</strong> <span class="source-badge">{{ f.source_engine }}</span> &nbsp;&nbsp;|&nbsp;&nbsp;
-            <strong>CWE:</strong> {{ f.cwe }} &nbsp;&nbsp;|&nbsp;&nbsp;
-            <strong>CVSS 3.1 Score:</strong> {{ f.cvss }}
-        </div>
+        <div class="finding-meta"><strong>Source:</strong> <span class="source-badge">{{ f.source_engine }}</span> &nbsp;&nbsp;|&nbsp;&nbsp; <strong>CWE:</strong> {{ f.cwe }} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>CVSS 3.1 Score:</strong> {{ f.cvss }}</div>
         <h3>Description (Incl. Root Cause)</h3><p>{{ f.desc }}</p>
         <h3>Security Impact</h3><p>{{ f.impact }}</p>
-        <h3>Affected Host(s)</h3>
-        <ul><li>acmecorp.com (443/TCP)</li></ul>
         <h3>Remediation</h3><p>{{ f.remediation }}</p>
         <h3>External References</h3><p><a href="{{ f.reference }}">{{ f.reference }}</a></p>
     </div>
     {% endfor %}
 </div>
 
-<!-- REMEDIATION SUMMARY -->
 <div class="content">
     <h1>Remediation Summary</h1>
-    <p>As a result of this assessment there are several opportunities for Acme Corp to strengthen its web application security. Remediation efforts are prioritized below.</p>
-
+    <p>As a result of this assessment there are several opportunities for Acme Corp to strengthen its security posture. Remediation efforts are prioritized below.</p>
     <h2>Short Term</h2>
-    <ul>
-        <li><strong>[Finding 1]</strong> – Implement parameterized queries for all database interactions</li>
-        <li><strong>[Finding 2]</strong> – Implement proper output encoding and CSP headers</li>
-        <li><strong>[Finding 5]</strong> – Configure custom error pages and remove server banners</li>
-        <li>Enforce HTTPS-only access across the entire application</li>
-    </ul>
-
+    <ul><li>Review all High and Medium severity findings from engine outputs.</li><li>Address critical misconfigurations immediately.</li></ul>
     <h2>Medium Term</h2>
-    <ul>
-        <li><strong>[Finding 3]</strong> – Implement proper access control checks on all object references</li>
-        <li><strong>[Finding 4]</strong> – Implement all recommended security headers</li>
-        <li><strong>[Finding 6]</strong> – Enhance network logging and monitoring</li>
-        <li>Perform a comprehensive code review focusing on OWASP Top 10 vulnerabilities</li>
-    </ul>
-
+    <ul><li>Integrate automated scanning into CI/CD pipeline.</li><li>Configure severity-based gating.</li></ul>
     <h2>Long Term</h2>
-    <ul>
-        <li>Perform ongoing web application vulnerability assessments</li>
-        <li>Implement a secure SDLC with security testing at each phase</li>
-        <li>Educate developers on secure coding best practices</li>
-        <li>Consider implementing bug bounty program for continuous security testing</li>
-    </ul>
+    <ul><li>Perform ongoing internal vulnerability assessments.</li><li>Establish continuous compliance monitoring.</li></ul>
 </div>
 
-<!-- APPENDICES -->
 <div class="content">
     <h1>Appendices</h1>
-
     <h2>Appendix A – Finding Severities</h2>
     <table>
         <tr><th>Rating</th><th>Severity Rating Definition</th></tr>
-        <tr><td class="sev-high">High</td><td>Exploitation will cause substantial harm. Significant political, financial, and/or legal damage is likely to result. The threat exposure is high.</td></tr>
-        <tr><td class="sev-medium">Medium</td><td>Exploitation will significantly impact the confidentiality, integrity, and/or availability of the system, application, or data. May cause moderate financial loss or public embarrassment.</td></tr>
-        <tr><td class="sev-low">Low</td><td>Exploitation will cause minimal impact to operations. The CIA of sensitive information are not at risk of compromise.</td></tr>
-        <tr><td class="sev-info">Info</td><td>Informational findings are observations for areas of improvement and do not represent security vulnerabilities on their own.</td></tr>
+        <tr><td class="sev-high">High</td><td>Exploitation will cause substantial harm. Significant political, financial, and/or legal damage is likely.</td></tr>
+        <tr><td class="sev-medium">Medium</td><td>Exploitation will significantly impact confidentiality, integrity, and/or availability.</td></tr>
+        <tr><td class="sev-low">Low</td><td>Exploitation will cause minimal impact to operations.</td></tr>
+        <tr><td class="sev-info">Info</td><td>Observations for areas of improvement. Do not represent security vulnerabilities on their own.</td></tr>
     </table>
-    <p class="table-caption">Table 4: Severity Definitions</p>
-
     <h2>Appendix B – Compliance Framework Mapping</h2>
     <table>
         <tr><th>Framework</th><th>Applicable Findings</th><th>Relationship</th></tr>
-        <tr><td>OWASP Top 10</td><td>1, 2, 3</td><td>Direct mapping to A03:2021-Injection, A07:2021-XSS, A01:2021-Broken Access Control</td></tr>
-        <tr><td>OWASP ASVS</td><td>1, 2, 3, 4</td><td>Dynamic evidence toward ASVS verification requirements for web applications</td></tr>
-        <tr><td>OWASP API Security Top 10</td><td>1, 3</td><td>API-specific vulnerability detection for API endpoints</td></tr>
+        <tr><td>OWASP Top 10</td><td>1, 2, 3</td><td>Direct mapping to A03:2021-Injection, A07:2021-XSS</td></tr>
+        <tr><td>OWASP ASVS</td><td>1, 2, 3, 4</td><td>Dynamic evidence toward ASVS verification requirements</td></tr>
         <tr><td>National CERT SSDLC</td><td>All</td><td>Pre-production security validation & audit trail</td></tr>
     </table>
-    <p class="table-caption">Table 5: Compliance Framework Cross-Reference</p>
-
     <h2>Appendix C – Scan Metadata</h2>
     <table>
         <tr><th>Property</th><th>Value</th></tr>
         <tr><td>Scan ID</td><td>{{ scan_id }}</td></tr>
         <tr><td>Scan Date</td><td>{{ scan_date }}</td></tr>
         <tr><td>Target</td><td>acmecorp.com</td></tr>
-        <tr><td>Engines Used</td><td>OWASP ZAP, Nikto, Custom iSeeWaves Scanners</td></tr>
-        <tr><td>Report Version</td><td>1.0</td></tr>
         <tr><td>Prepared By</td><td>iSeeWaves (Private) Limited</td></tr>
     </table>
-    <p class="table-caption">Table 6: Scan Metadata</p>
 </div>
 
-<!-- FINAL PAGE -->
 <div class="content" style="text-align: center; padding-top: 200px;">
     <div style="font-size: 24pt; font-weight: bold; color: #7fff00; margin-bottom: 20px;">iSeeWaves (Private) Limited.</div>
     <div style="font-size: 11pt; color: #9ca3af; letter-spacing: 2px; margin-bottom: 60px;">OFFENSIVE SECURITY | GRC ADVISORY | SUPPLY CHAIN SECURITY</div>
-    <div style="border-top: 2px solid #7fff00; border-bottom: 2px solid #7fff00; padding: 20px 0; margin: 40px 0;">
-        <div style="font-size: 14pt; color: #ffffff;">Thank you for choosing iSeeWaves</div>
-    </div>
-    <div style="font-size: 10pt; color: #9ca3af; margin-top: 100px;">
-        <p>iSeeWaves (Private) Limited — Confidential</p>
-        <p>No part of this document may be disclosed to outside sources without explicit written authorization of iSeeWaves and the recipient.</p>
-    </div>
+    <div style="border-top: 2px solid #7fff00; border-bottom: 2px solid #7fff00; padding: 20px 0; margin: 40px 0;"><div style="font-size: 14pt; color: #ffffff;">Thank you for choosing iSeeWaves</div></div>
+    <div style="font-size: 10pt; color: #9ca3af; margin-top: 100px;"><p>iSeeWaves (Private) Limited — Confidential</p></div>
 </div>
 
 </body>

@@ -31,42 +31,15 @@
             <h1>🛡️ myESI Unified Security Dashboard</h1>
             <a href="/report/{{ scan_result.scan_id }}" class="btn">📄 Download Audit PDF</a>
         </div>
-
         <div class="filters">
             <label>Filter by Engine (IFR-UI-4):</label>
-            <select id="engineFilter" onchange="filterTable()">
-                <option value="all">All Engines</option>
-                <option value="OWASP ZAP">OWASP ZAP</option>
-                <option value="Nikto">Nikto</option>
-                <option value="MobSF">MobSF</option>
-            </select>
+            <select id="engineFilter" onchange="filterTable()"><option value="all">All Engines</option><option value="OWASP ZAP">OWASP ZAP</option><option value="Nikto">Nikto</option><option value="MobSF">MobSF</option></select>
             <label>Filter by Severity:</label>
-            <select id="severityFilter" onchange="filterTable()">
-                <option value="all">All Severities</option>
-                <option value="High">High</option>
-                <option value="Medium">Medium</option>
-                <option value="Low">Low</option>
-            </select>
-            <label>Filter by Status:</label>
-            <select id="statusFilter" onchange="filterTable()">
-                <option value="all">All Statuses</option>
-                <option value="Open">Open</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Fixed">Fixed</option>
-            </select>
+            <select id="severityFilter" onchange="filterTable()"><option value="all">All Severities</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
         </div>
-
         <h2>Scan Findings (Single Pane of Glass)</h2>
         <table id="findingsTable">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Severity</th>
-                    <th>Finding Title</th>
-                    <th>Source Engine (IFR-UI-3)</th>
-                    <th>Fix Status (IFR-UI-2)</th>
-                </tr>
-            </thead>
+            <thead><tr><th>ID</th><th>Severity</th><th>Finding Title</th><th>Source Engine (IFR-UI-3)</th><th>Fix Status (IFR-UI-2)</th></tr></thead>
             <tbody>
                 {% for f in findings %}
                 <tr class="finding-row" data-engine="{{ f.source_engine }}" data-severity="{{ f.severity }}" data-status="{{ f.status }}">
@@ -74,35 +47,24 @@
                     <td><span class="sev-ring sev-{{ f.severity|lower }}"></span>{{ f.severity }}</td>
                     <td>{{ f.title }}</td>
                     <td><span class="source-badge">{{ f.source_engine }}</span></td>
-                    <td>
-                        <select class="fix-tracker">
-                            <option {% if f.status == 'Open' %}selected{% endif %}>Open</option>
-                            <option {% if f.status == 'In Progress' %}selected{% endif %}>In Progress</option>
-                            <option {% if f.status == 'Fixed' %}selected{% endif %}>Fixed</option>
-                            <option>Wont-Fix</option>
-                        </select>
-                    </td>
+                    <td><select class="fix-tracker"><option {% if f.status == 'Open' %}selected{% endif %}>Open</option><option {% if f.status == 'In Progress' %}selected{% endif %}>In Progress</option><option {% if f.status == 'Fixed' %}selected{% endif %}>Fixed</option><option>Wont-Fix</option></select></td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         <a href="/" class="btn btn-secondary">← Start New Scan</a>
     </div>
-
     <script>
         function filterTable() {
             const engine = document.getElementById('engineFilter').value;
             const severity = document.getElementById('severityFilter').value;
-            const status = document.getElementById('statusFilter').value;
             const rows = document.querySelectorAll('.finding-row');
             rows.forEach(row => {
                 const rowEngine = row.getAttribute('data-engine');
                 const rowSev = row.getAttribute('data-severity');
-                const rowStatus = row.getAttribute('data-status');
                 const engineMatch = (engine === 'all' || rowEngine === engine);
                 const sevMatch = (severity === 'all' || rowSev === severity);
-                const statusMatch = (status === 'all' || rowStatus === status);
-                row.style.display = (engineMatch && sevMatch && statusMatch) ? '' : 'none';
+                row.style.display = (engineMatch && sevMatch) ? '' : 'none';
             });
         }
     </script>

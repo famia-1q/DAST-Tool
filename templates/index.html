@@ -28,26 +28,20 @@
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo-container">
-            <span class="logo-waves"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg></span>
-            iSeeWaves
-        </div>
+        <div class="logo-container"><span class="logo-waves"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg></span>iSeeWaves</div>
     </nav>
-
     <div class="main-container">
         <div class="hero-text">
-            <div class="badge">🛡️ NEXT-GEN CYBERSECURITY</div>
+            <div class="badge">️ NEXT-GEN CYBERSECURITY</div>
             <h1>SLEEP TIGHT,<br><span>WE GUARD YOUR BYTE!</span></h1>
-            <p class="subtitle">Unified DAST & Binary Analysis Platform. Secure your digital assets with enterprise-grade automated scanning.</p>
+            <p class="subtitle">Unified DAST & Binary Analysis Platform.</p>
         </div>
-
         <div class="scanner-card">
             <form action="/scan" method="POST" enctype="multipart/form-data">
                 <div class="form-group">
                     <label for="client_name">Client / Organization Name</label>
-                    <input type="text" id="client_name" name="client_name" placeholder="e.g. Editute, Acme Corp, MyESI" required>
+                    <input type="text" id="client_name" name="client_name" placeholder="e.g. Acme Corp" required>
                 </div>
-
                 <div class="form-group">
                     <label for="target_type">Select Scan Vector</label>
                     <select id="target_type" name="target_type" required onchange="toggleInput()">
@@ -57,24 +51,19 @@
                         <option value="linux">Linux Package (.deb)</option>
                     </select>
                 </div>
-                
                 <div class="form-group" id="url_input">
                     <label for="url">Target URL</label>
                     <input type="url" id="url" name="url" placeholder="https://target-domain.com" pattern="https?://.+">
                 </div>
-                
                 <div class="form-group hidden" id="file_input">
                     <label for="file">Upload Artifact</label>
                     <input type="file" id="file" name="file" accept=".apk,.ipa,.exe,.deb">
                 </div>
-                
                 <button type="submit" class="btn-scan">🚀 Initialize Scan</button>
             </form>
         </div>
     </div>
-
     <div class="footer">© 2026 iSeeWaves Global Cybersecurity. All Rights Reserved. | Zero-Trust Processing Active.</div>
-
     <script>
         function toggleInput() {
             const type = document.getElementById('target_type').value;
