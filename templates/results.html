@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Scan Results - iSeeWaves</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); min-height: 100vh; padding: 20px; margin: 0; }
+        .container { max-width: 800px; margin: 0 auto; background: white; border-radius: 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        .success-banner { background: #d4edda; border-left: 4px solid #28a745; padding: 20px; margin-bottom: 30px; border-radius: 4px; }
+        .btn { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; margin: 10px 10px 10px 0; transition: transform 0.2s; }
+        .btn:hover { transform: translateY(-2px); }
+        .btn-secondary { background: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-banner">
+            <h2>✅ Scan Completed Successfully!</h2>
+            <p>Your security assessment has been completed. Download your audit-ready PDF report below.</p>
+        </div>
+        <div style="margin-bottom: 30px;">
+            <p><strong>Scan ID:</strong> {{ scan_result.scan_id }}</p>
+            <p><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">Completed</span></p>
+        </div>
+        <div>
+            <a href="/report/{{ scan_result.scan_id }}" class="btn">📄 Download Official PDF Report</a>
+            <a href="/" class="btn btn-secondary">← Start New Scan</a>
+        </div>
+    </div>
+</body>
+</html>
