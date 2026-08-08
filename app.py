@@ -29,6 +29,31 @@ ALLOWED_EXTENSIONS = {'.apk', '.ipa', '.exe', '.deb'}
 def allowed_file(filename):
     return Path(filename).suffix.lower() in ALLOWED_EXTENSIONS
 
+def get_dynamic_findings(target_type):
+    if target_type == 'mobile':
+        return [
+            {'id': 1, 'severity': 'High', 'title': 'Insecure Data Storage Detected', 'source_engine': 'MobSF', 'status': 'Open', 'cwe': 'CWE-312', 'cvss': '7.5', 'desc': 'The application stores sensitive data in plaintext within SharedPreferences.', 'impact': 'An attacker with physical access can extract sensitive user data.', 'remediation': 'Use Android Keystore System or encrypted SharedPreferences.', 'reference': 'https://owasp.org/www-project-mobile-top-10/'},
+            {'id': 2, 'severity': 'Medium', 'title': 'Hardcoded API Keys or Secrets', 'source_engine': 'MobSF', 'status': 'In Progress', 'cwe': 'CWE-798', 'cvss': '6.5', 'desc': 'Static analysis identified hardcoded API keys within the application binary.', 'impact': 'Extraction of these keys can lead to unauthorized access to backend services.', 'remediation': 'Remove hardcoded secrets. Use secure environment variables.', 'reference': 'https://owasp.org/www-project-mobile-top-10/'},
+            {'id': 3, 'severity': 'Low', 'title': 'Missing Certificate Pinning', 'source_engine': 'MobSF', 'status': 'Open', 'cwe': 'CWE-295', 'cvss': '4.3', 'desc': 'The application does not implement SSL/TLS certificate pinning.', 'impact': 'Vulnerable to Man-in-the-Middle (MitM) attacks.', 'remediation': 'Implement certificate pinning using libraries like OkHttp.', 'reference': 'https://owasp.org/www-project-mobile-top-10/'}
+        ]
+    elif target_type == 'windows':
+        return [
+            {'id': 1, 'severity': 'High', 'title': 'Missing Security Mitigations (ASLR/DEP)', 'source_engine': 'pefile / checksec', 'status': 'Open', 'cwe': 'CWE-121', 'cvss': '7.8', 'desc': 'The executable is compiled without Address Space Layout Randomization (ASLR) or Data Execution Prevention (DEP).', 'impact': 'Makes the binary highly susceptible to memory corruption exploits.', 'remediation': 'Recompile with /DYNAMICBASE (ASLR) and /NXCOMPAT (DEP) flags.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Buffer_Overflow'},
+            {'id': 2, 'severity': 'Medium', 'title': 'Suspicious YARA Rule Match', 'source_engine': 'YARA', 'status': 'In Progress', 'cwe': 'CWE-506', 'cvss': '6.0', 'desc': 'The binary contains byte patterns matching known suspicious behavior.', 'impact': 'Indicates the binary may be packed or contain behavior associated with malware.', 'remediation': 'Review the specific YARA rule trigger and adjust build process.', 'reference': 'https://github.com/Yara-Rules/rules'},
+            {'id': 3, 'severity': 'Info', 'title': 'Embedded Debug Symbols or PDB Paths', 'source_engine': 'Manalyze', 'status': 'Open', 'cwe': 'CWE-200', 'cvss': 'N/A', 'desc': 'The executable contains embedded PDB paths or debug symbols.', 'impact': 'Information disclosure aiding reverse engineering.', 'remediation': 'Strip debug symbols from the release build configuration.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Information_Leakage'}
+        ]
+    elif target_type == 'linux':
+        return [
+            {'id': 1, 'severity': 'High', 'title': 'World-Writable Files in Package', 'source_engine': 'dpkg-deb', 'status': 'Open', 'cwe': 'CWE-732', 'cvss': '7.5', 'desc': 'The Debian package contains files with world-writable permissions.', 'impact': 'Any user can modify these files, potentially leading to privilege escalation.', 'remediation': 'Ensure all files have strict, least-privilege permissions.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Insecure_Direct_Object_Reference'},
+            {'id': 2, 'severity': 'Medium', 'title': 'Missing PIE (Position Independent Executable)', 'source_engine': 'checksec', 'status': 'In Progress', 'cwe': 'CWE-121', 'cvss': '6.5', 'desc': 'The ELF binary is not compiled as a Position Independent Executable.', 'impact': 'Reduces the effectiveness of ASLR.', 'remediation': 'Recompile with -fPIE -pie compiler flags.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Buffer_Overflow'},
+            {'id': 3, 'severity': 'Low', 'title': 'Unnecessary ELF Sections or Metadata', 'source_engine': 'LIEF', 'status': 'Open', 'cwe': 'CWE-200', 'cvss': '3.7', 'desc': 'The ELF binary contains non-standard sections leaking build info.', 'impact': 'Minor information disclosure regarding compiler version.', 'remediation': 'Use strip to remove unnecessary symbols.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Information_Leakage'}
+        ]
+    else:
+        return [
+            {'id': 1, 'severity': 'High', 'title': 'SQL Injection Detected', 'source_engine': 'OWASP ZAP', 'status': 'Open', 'cwe': 'CWE-89', 'cvss': '9.8', 'desc': 'SQL injection vulnerability found in login parameter.', 'impact': 'Complete database compromise.', 'remediation': 'Use parameterized queries.', 'reference': 'https://owasp.org/www-community/attacks/SQL_Injection'},
+            {'id': 2, 'severity': 'Medium', 'title': 'Missing Security Headers', 'source_engine': 'Nikto', 'status': 'Open', 'cwe': 'CWE-693', 'cvss': '5.3', 'desc': 'Missing X-Frame-Options, CSP, HSTS headers.', 'impact': 'Vulnerable to clickjacking and MIME confusion.', 'remediation': 'Implement recommended security headers.', 'reference': 'https://owasp.org/www-project-secure-headers/'}
+        ]
+
 def run_scan_async(scan_id, target_type, target_value, client_name, file_path=None):
     try:
         SCAN_STATUS[scan_id] = {'status': 'running', 'progress': 10, 'message': 'Initializing scan...', 'client': client_name}
@@ -116,31 +141,7 @@ def generate_report(scan_id):
         'linux': 'Linux Package Binary Analysis Report of Findings'
     }
     report_title = titles.get(target_type, 'Unified Security Assessment Report of Findings')
-
-    # DYNAMIC FINDINGS BASED ON SCAN TYPE
-    if target_type == 'mobile':
-        findings = [
-            {'id': 1, 'severity': 'High', 'title': 'Insecure Data Storage Detected', 'source_engine': 'MobSF', 'status': 'Open', 'cwe': 'CWE-312', 'cvss': '7.5', 'desc': 'The application stores sensitive data in plaintext within SharedPreferences.', 'impact': 'An attacker with physical access can extract sensitive user data.', 'remediation': 'Use Android Keystore System or encrypted SharedPreferences.', 'reference': 'https://owasp.org/www-project-mobile-top-10/'},
-            {'id': 2, 'severity': 'Medium', 'title': 'Hardcoded API Keys or Secrets', 'source_engine': 'MobSF', 'status': 'In Progress', 'cwe': 'CWE-798', 'cvss': '6.5', 'desc': 'Static analysis identified hardcoded API keys within the application binary.', 'impact': 'Extraction of these keys can lead to unauthorized access to backend services.', 'remediation': 'Remove hardcoded secrets. Use secure environment variables.', 'reference': 'https://owasp.org/www-project-mobile-top-10/'},
-            {'id': 3, 'severity': 'Low', 'title': 'Missing Certificate Pinning', 'source_engine': 'MobSF', 'status': 'Open', 'cwe': 'CWE-295', 'cvss': '4.3', 'desc': 'The application does not implement SSL/TLS certificate pinning.', 'impact': 'Vulnerable to Man-in-the-Middle (MitM) attacks.', 'remediation': 'Implement certificate pinning using libraries like OkHttp.', 'reference': 'https://owasp.org/www-project-mobile-top-10/'}
-        ]
-    elif target_type == 'windows':
-        findings = [
-            {'id': 1, 'severity': 'High', 'title': 'Missing Security Mitigations (ASLR/DEP)', 'source_engine': 'pefile / checksec', 'status': 'Open', 'cwe': 'CWE-121', 'cvss': '7.8', 'desc': 'The executable is compiled without Address Space Layout Randomization (ASLR) or Data Execution Prevention (DEP).', 'impact': 'Makes the binary highly susceptible to memory corruption exploits.', 'remediation': 'Recompile with /DYNAMICBASE (ASLR) and /NXCOMPAT (DEP) flags.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Buffer_Overflow'},
-            {'id': 2, 'severity': 'Medium', 'title': 'Suspicious YARA Rule Match', 'source_engine': 'YARA', 'status': 'In Progress', 'cwe': 'CWE-506', 'cvss': '6.0', 'desc': 'The binary contains byte patterns matching known suspicious behavior.', 'impact': 'Indicates the binary may be packed or contain behavior associated with malware.', 'remediation': 'Review the specific YARA rule trigger and adjust build process.', 'reference': 'https://github.com/Yara-Rules/rules'},
-            {'id': 3, 'severity': 'Info', 'title': 'Embedded Debug Symbols or PDB Paths', 'source_engine': 'Manalyze', 'status': 'Open', 'cwe': 'CWE-200', 'cvss': 'N/A', 'desc': 'The executable contains embedded PDB paths or debug symbols.', 'impact': 'Information disclosure aiding reverse engineering.', 'remediation': 'Strip debug symbols from the release build configuration.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Information_Leakage'}
-        ]
-    elif target_type == 'linux':
-        findings = [
-            {'id': 1, 'severity': 'High', 'title': 'World-Writable Files in Package', 'source_engine': 'dpkg-deb', 'status': 'Open', 'cwe': 'CWE-732', 'cvss': '7.5', 'desc': 'The Debian package contains files with world-writable permissions.', 'impact': 'Any user can modify these files, potentially leading to privilege escalation.', 'remediation': 'Ensure all files have strict, least-privilege permissions.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Insecure_Direct_Object_Reference'},
-            {'id': 2, 'severity': 'Medium', 'title': 'Missing PIE (Position Independent Executable)', 'source_engine': 'checksec', 'status': 'In Progress', 'cwe': 'CWE-121', 'cvss': '6.5', 'desc': 'The ELF binary is not compiled as a Position Independent Executable.', 'impact': 'Reduces the effectiveness of ASLR.', 'remediation': 'Recompile with -fPIE -pie compiler flags.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Buffer_Overflow'},
-            {'id': 3, 'severity': 'Low', 'title': 'Unnecessary ELF Sections or Metadata', 'source_engine': 'LIEF', 'status': 'Open', 'cwe': 'CWE-200', 'cvss': '3.7', 'desc': 'The ELF binary contains non-standard sections leaking build info.', 'impact': 'Minor information disclosure regarding compiler version.', 'remediation': 'Use strip to remove unnecessary symbols.', 'reference': 'https://owasp.org/www-community/vulnerabilities/Information_Leakage'}
-        ]
-    else: # URL / Web
-        findings = [
-            {'id': 1, 'severity': 'High', 'title': 'SQL Injection Detected', 'source_engine': 'OWASP ZAP', 'status': 'Open', 'cwe': 'CWE-89', 'cvss': '9.8', 'desc': 'SQL injection vulnerability found in login parameter.', 'impact': 'Complete database compromise.', 'remediation': 'Use parameterized queries.', 'reference': 'https://owasp.org/www-community/attacks/SQL_Injection'},
-            {'id': 2, 'severity': 'Medium', 'title': 'Missing Security Headers', 'source_engine': 'Nikto', 'status': 'Open', 'cwe': 'CWE-693', 'cvss': '5.3', 'desc': 'Missing X-Frame-Options, CSP, HSTS headers.', 'impact': 'Vulnerable to clickjacking and MIME confusion.', 'remediation': 'Implement recommended security headers.', 'reference': 'https://owasp.org/www-project-secure-headers/'}
-        ]
+    findings = get_dynamic_findings(target_type)
 
     high_count = sum(1 for f in findings if f['severity'] == 'High')
     medium_count = sum(1 for f in findings if f['severity'] == 'Medium')
@@ -150,13 +151,25 @@ def generate_report(scan_id):
 
     html_content = render_template('report_template.html',
         scan_id=scan_id, scan_date=datetime.now().strftime("%B %d, %Y"),
-        report_title=report_title, findings=findings, 
+        report_title=report_title, client_name=client_name, findings=findings, 
         high_count=high_count, medium_count=medium_count, low_count=low_count, info_count=info_count, total_count=total_count
     )
     
     pdf_file = REPORTS_FOLDER / f"iSeeWaves_{client_name.replace(' ', '_')}_Report_{scan_id}.pdf"
     HTML(string=html_content).write_pdf(str(pdf_file))
     return send_file(str(pdf_file), as_attachment=True, download_name=pdf_file.name)
+
+@app.route('/results/<scan_id>')
+def show_results(scan_id):
+    status = SCAN_STATUS.get(scan_id)
+    if not status or status.get('status') != 'complete':
+        flash('Scan not completed yet', 'error'); return redirect(url_for('index'))
+    
+    target_type = status.get('target_type', 'url')
+    client_name = status.get('client', 'Acme Corp')
+    findings = get_dynamic_findings(target_type)
+    
+    return render_template('results.html', scan_result=status, findings=findings, client_name=client_name)
 
 if __name__ == '__main__':
     print("=" * 60)

@@ -8,6 +8,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.5; color: #ffffff; background-color: #1a1f2e; }
 
+    /* COVER PAGE */
     .cover { background-color: #1a1f2e; color: #ffffff; height: 297mm; padding: 60px 70px; page-break-after: always; display: flex; flex-direction: column; position: relative; }
     .cover-header { margin-bottom: 60px; }
     .company-name { font-size: 26pt; font-weight: bold; color: #7fff00; margin-bottom: 5px; }
@@ -21,7 +22,9 @@
     .date-text { color: #ffffff; }
     .version-text { color: #9ca3af; font-style: italic; }
     .cover-footer { border-top: 1px solid #4b5563; padding-top: 15px; text-align: center; font-size: 9pt; color: #9ca3af; position: absolute; bottom: 40px; left: 70px; right: 70px; }
+    .cover-footer p { margin: 3px 0; }
 
+    /* CONTENT PAGES */
     .content { background-color: #1a1f2e; color: #ffffff; padding: 40px 70px; min-height: 297mm; page-break-after: always; }
     .content:last-child { page-break-after: auto; }
     
@@ -34,12 +37,14 @@
     li { margin-bottom: 6px; color: #ffffff; }
     strong { color: #7fff00; }
 
-    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 10pt; }
+    /* TABLES */
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 10pt; page-break-inside: avoid; }
     th { background-color: #0f1419; color: #7fff00; font-weight: bold; padding: 10px 12px; border: 1px solid #7fff00; text-align: left; }
     td { padding: 8px 12px; border: 1px solid #4b5563; vertical-align: top; color: #ffffff; }
     tr:nth-child(even) td { background-color: #252b3d; }
     .table-caption { font-size: 10pt; font-style: italic; color: #9ca3af; margin-top: 5px; margin-bottom: 20px; text-align: center; }
 
+    /* FINDINGS */
     .finding-box { border: 1px solid #4b5563; border-left: 5px solid #7fff00; padding: 15px 20px; margin: 20px 0; background-color: #0f1419; page-break-inside: avoid; }
     .finding-title { font-size: 14pt; font-weight: bold; color: #ffffff; margin-bottom: 10px; }
     .finding-meta { font-size: 10pt; color: #9ca3af; margin-bottom: 15px; }
@@ -52,15 +57,16 @@
 </head>
 <body>
 
+<!-- COVER PAGE -->
 <div class="cover">
     <div class="cover-header">
         <div class="company-name">iSeeWaves (Private) Limited.</div>
         <div class="company-tagline">OFFENSIVE SECURITY | GRC ADVISORY | SUPPLY CHAIN SECURITY</div>
     </div>
     <div class="report-title-box"><div class="report-title">{{ report_title }}</div></div>
-    <div class="client-name">ACME CORP</div>
+    <div class="client-name">{{ client_name|upper }}</div>
     <div class="client-details">
-        <p class="target-text">Acme Corp (acmecorp.com)</p>
+        <p class="target-text">{{ client_name }} ({{ client_name|lower|replace(' ', '') }}.com)</p>
         <p class="date-text">{{ scan_date }}</p>
         <p class="version-text">Version 1.0</p>
     </div>
@@ -70,17 +76,19 @@
     </div>
 </div>
 
+<!-- CONFIDENTIALITY -->
 <div class="content">
     <h1>Statement of Confidentiality</h1>
     <p>The contents of this document have been developed by iSeeWaves (Private) Limited. iSeeWaves considers the contents of this document to be proprietary and business confidential information. This information is to be used only in the performance of its intended use. This document may not be released to another vendor, business partner or contractor without prior written consent from iSeeWaves.</p>
 </div>
 
+<!-- ENGAGEMENT CONTACTS -->
 <div class="content">
     <h1>Engagement Contacts</h1>
-    <h2>Acme Corp Contacts</h2>
+    <h2>{{ client_name }} Contacts</h2>
     <table>
         <tr><th>Primary Contact</th><th>Title</th><th>Primary Contact Email</th></tr>
-        <tr><td>John Smith</td><td>Chief Executive Officer</td><td>ceo@acmecorp.com</td></tr>
+        <tr><td>John Smith</td><td>Chief Executive Officer</td><td>ceo@{{ client_name|lower|replace(' ', '') }}.com</td></tr>
     </table>
     <h2>Assessor Contact</h2>
     <table>
@@ -89,25 +97,27 @@
     </table>
 </div>
 
+<!-- EXECUTIVE SUMMARY -->
 <div class="content">
     <h1>Executive Summary</h1>
-    <p>Acme Corp ("Acme Corp" herein) contracted iSeeWaves (Private) Limited to perform a security assessment to identify security weaknesses, determine the impact, document all findings in a clear and repeatable manner, and provide remediation recommendations.</p>
+    <p>{{ client_name }} ("{{ client_name }}" herein) contracted iSeeWaves (Private) Limited to perform a security assessment to identify security weaknesses, determine the impact, document all findings in a clear and repeatable manner, and provide remediation recommendations.</p>
     <h2>Approach</h2>
-    <p>iSeeWaves performed testing under a "black box" approach on {{ scan_date }} without credentials or any advance knowledge of Acme Corp's environment. Testing was performed from a non-evasive standpoint with the goal of uncovering as many misconfigurations and vulnerabilities as possible.</p>
+    <p>iSeeWaves performed testing under a "black box" approach on {{ scan_date }} without credentials or any advance knowledge of {{ client_name }}'s environment. Testing was performed from a non-evasive standpoint with the goal of uncovering as many misconfigurations and vulnerabilities as possible.</p>
     <h2>Scope</h2>
-    <p>The scope of this assessment was the Acme Corp target artifact and associated endpoints.</p>
+    <p>The scope of this assessment was the {{ client_name }} target artifact and associated endpoints.</p>
     <h3>In-Scope Assets</h3>
     <table>
         <tr><th>Host/URL/IP Address</th><th>Description</th></tr>
-        <tr><td>acmecorp.com</td><td>Acme Corp Target</td></tr>
+        <tr><td>{{ client_name|lower|replace(' ', '') }}.com</td><td>{{ client_name }} Target</td></tr>
         <tr><td>{{ scan_id }}</td><td>Scan Identifier</td></tr>
     </table>
     <p class="table-caption">Table 1: Scope Details</p>
 </div>
 
+<!-- SUMMARY OF FINDINGS -->
 <div class="content">
     <h1>Summary of Findings</h1>
-    <p>During the course of testing, iSeeWaves uncovered findings that pose a material risk to Acme Corp's information systems. The below table provides a summary of the findings by severity level.</p>
+    <p>During the course of testing, iSeeWaves uncovered findings that pose a material risk to {{ client_name }}'s information systems. The below table provides a summary of the findings by severity level.</p>
     <table>
         <tr><th>Finding Severity</th><th>High</th><th>Medium</th><th>Low</th><th>Info</th><th>Total</th></tr>
         <tr><td><strong>Count</strong></td><td class="sev-high">{{ high_count }}</td><td class="sev-medium">{{ medium_count }}</td><td class="sev-low">{{ low_count }}</td><td class="sev-info">{{ info_count }}</td><td><strong>{{ total_count }}</strong></td></tr>
@@ -122,6 +132,7 @@
     <p class="table-caption">Table 3: Finding List</p>
 </div>
 
+<!-- TECHNICAL FINDINGS -->
 <div class="content">
     <h1>Technical Findings Details</h1>
     {% for f in findings %}
@@ -136,9 +147,10 @@
     {% endfor %}
 </div>
 
+<!-- REMEDIATION SUMMARY -->
 <div class="content">
     <h1>Remediation Summary</h1>
-    <p>As a result of this assessment there are several opportunities for Acme Corp to strengthen its security posture. Remediation efforts are prioritized below.</p>
+    <p>As a result of this assessment there are several opportunities for {{ client_name }} to strengthen its security posture. Remediation efforts are prioritized below.</p>
     <h2>Short Term</h2>
     <ul><li>Review all High and Medium severity findings from engine outputs.</li><li>Address critical misconfigurations immediately.</li></ul>
     <h2>Medium Term</h2>
@@ -147,6 +159,7 @@
     <ul><li>Perform ongoing internal vulnerability assessments.</li><li>Establish continuous compliance monitoring.</li></ul>
 </div>
 
+<!-- APPENDICES -->
 <div class="content">
     <h1>Appendices</h1>
     <h2>Appendix A – Finding Severities</h2>
@@ -169,11 +182,12 @@
         <tr><th>Property</th><th>Value</th></tr>
         <tr><td>Scan ID</td><td>{{ scan_id }}</td></tr>
         <tr><td>Scan Date</td><td>{{ scan_date }}</td></tr>
-        <tr><td>Target</td><td>acmecorp.com</td></tr>
+        <tr><td>Target</td><td>{{ client_name|lower|replace(' ', '') }}.com</td></tr>
         <tr><td>Prepared By</td><td>iSeeWaves (Private) Limited</td></tr>
     </table>
 </div>
 
+<!-- FINAL PAGE -->
 <div class="content" style="text-align: center; padding-top: 200px;">
     <div style="font-size: 24pt; font-weight: bold; color: #7fff00; margin-bottom: 20px;">iSeeWaves (Private) Limited.</div>
     <div style="font-size: 11pt; color: #9ca3af; letter-spacing: 2px; margin-bottom: 60px;">OFFENSIVE SECURITY | GRC ADVISORY | SUPPLY CHAIN SECURITY</div>

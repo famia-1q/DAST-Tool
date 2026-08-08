@@ -25,6 +25,7 @@
         <div class="status-message" id="statusMessage">Initializing scan...</div>
         <div id="completeSection" class="hidden">
             <div class="success-box"><h2 style="color: #28a745; margin-top: 0;">✅ Scan Completed Successfully!</h2><p>Your security assessment has been completed.</p></div>
+            <a href="/results/{{ scan_id }}" class="btn">📊 View Findings Dashboard</a>
             <a href="/report/{{ scan_id }}" class="btn">📄 Download PDF Report</a>
             <a href="/" class="btn" style="background: #6c757d;">← New Scan</a>
         </div>

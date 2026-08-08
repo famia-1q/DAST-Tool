@@ -2,12 +2,14 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>myESI Dashboard - Scan Results</title>
+    <title>Scan Results - iSeeWaves</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, sans-serif; background: #f4f6f9; color: #333; margin: 0; padding: 20px; }
         .dashboard-container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00e5ff; padding-bottom: 15px; margin-bottom: 20px; }
         .header h1 { color: #0a192f; margin: 0; }
+        .client-info { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .client-info strong { color: #0a192f; }
         .filters { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
         .filters label { font-weight: bold; color: #555; }
         .filters select { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
@@ -23,37 +25,76 @@
         .fix-tracker { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; background: white; font-size: 0.9em; }
         .btn { display: inline-block; background: #00e5ff; color: #0a192f; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px; }
         .btn-secondary { background: #6c757d; color: white; }
+        .btn-pdf { background: #7fff00; color: #0a192f; }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
         <div class="header">
-            <h1>🛡️ myESI Unified Security Dashboard</h1>
-            <a href="/report/{{ scan_result.scan_id }}" class="btn">📄 Download Audit PDF</a>
+            <h1>🛡️ iSeeWaves Scan Results</h1>
+            <div>
+                <a href="/report/{{ scan_result.scan_id }}" class="btn btn-pdf">📄 Download PDF Report</a>
+                <a href="/" class="btn btn-secondary">← New Scan</a>
+            </div>
         </div>
+
+        <div class="client-info">
+            <p><strong>Client:</strong> {{ client_name }}</p>
+            <p><strong>Scan ID:</strong> {{ scan_result.scan_id }}</p>
+            <p><strong>Target Type:</strong> {{ scan_result.target_type|upper }}</p>
+            <p><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">Completed</span></p>
+        </div>
+
         <div class="filters">
-            <label>Filter by Engine (IFR-UI-4):</label>
-            <select id="engineFilter" onchange="filterTable()"><option value="all">All Engines</option><option value="OWASP ZAP">OWASP ZAP</option><option value="Nikto">Nikto</option><option value="MobSF">MobSF</option></select>
+            <label>Filter by Engine:</label>
+            <select id="engineFilter" onchange="filterTable()">
+                <option value="all">All Engines</option>
+                {% for f in findings %}
+                <option value="{{ f.source_engine }}">{{ f.source_engine }}</option>
+                {% endfor %}
+            </select>
             <label>Filter by Severity:</label>
-            <select id="severityFilter" onchange="filterTable()"><option value="all">All Severities</option><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select>
+            <select id="severityFilter" onchange="filterTable()">
+                <option value="all">All Severities</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+                <option value="Info">Info</option>
+            </select>
         </div>
-        <h2>Scan Findings (Single Pane of Glass)</h2>
+
+        <h2>Findings Summary</h2>
         <table id="findingsTable">
-            <thead><tr><th>ID</th><th>Severity</th><th>Finding Title</th><th>Source Engine (IFR-UI-3)</th><th>Fix Status (IFR-UI-2)</th></tr></thead>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Severity</th>
+                    <th>Finding Title</th>
+                    <th>Source Engine</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
             <tbody>
                 {% for f in findings %}
-                <tr class="finding-row" data-engine="{{ f.source_engine }}" data-severity="{{ f.severity }}" data-status="{{ f.status }}">
+                <tr class="finding-row" data-engine="{{ f.source_engine }}" data-severity="{{ f.severity }}">
                     <td>{{ f.id }}</td>
                     <td><span class="sev-ring sev-{{ f.severity|lower }}"></span>{{ f.severity }}</td>
                     <td>{{ f.title }}</td>
                     <td><span class="source-badge">{{ f.source_engine }}</span></td>
-                    <td><select class="fix-tracker"><option {% if f.status == 'Open' %}selected{% endif %}>Open</option><option {% if f.status == 'In Progress' %}selected{% endif %}>In Progress</option><option {% if f.status == 'Fixed' %}selected{% endif %}>Fixed</option><option>Wont-Fix</option></select></td>
+                    <td>
+                        <select class="fix-tracker">
+                            <option {% if f.status == 'Open' %}selected{% endif %}>Open</option>
+                            <option {% if f.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                            <option>Fixed</option>
+                            <option>Wont-Fix</option>
+                        </select>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-        <a href="/" class="btn btn-secondary">← Start New Scan</a>
     </div>
+
     <script>
         function filterTable() {
             const engine = document.getElementById('engineFilter').value;
