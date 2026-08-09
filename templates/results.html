@@ -8,7 +8,7 @@
         .dashboard-container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #00e5ff; padding-bottom: 15px; margin-bottom: 20px; }
         .header h1 { color: #0a192f; margin: 0; }
-        .client-info { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; }
+        .client-info { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; border-left: 4px solid #00e5ff; }
         .client-info strong { color: #0a192f; }
         .filters { background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
         .filters label { font-weight: bold; color: #555; }
@@ -22,20 +22,19 @@
         .sev-medium { background-color: #ea580c; }
         .sev-low { background-color: #ca8a04; }
         .sev-info { background-color: #2563eb; }
-        .fix-tracker { padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; background: white; font-size: 0.9em; }
-        .btn { display: inline-block; background: #00e5ff; color: #0a192f; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px; }
-        .btn-secondary { background: #6c757d; color: white; }
+        .btn { display: inline-block; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; transition: all 0.3s; }
         .btn-pdf { background: #7fff00; color: #0a192f; }
+        .btn-pdf:hover { background: #66cc00; transform: translateY(-2px); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-secondary:hover { background: #5a6268; }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
         <div class="header">
             <h1>🛡️ iSeeWaves Scan Results</h1>
-            <div>
-                <a href="/report/{{ scan_result.scan_id }}" class="btn btn-pdf">📄 Download PDF Report</a>
-                <a href="/" class="btn btn-secondary">← New Scan</a>
-            </div>
+            <!-- UPDATED: Links back to progress page -->
+            <a href="/scan/{{ scan_result.scan_id }}/progress" class="btn btn-pdf">📄 Download PDF Report</a>
         </div>
 
         <div class="client-info">
@@ -71,7 +70,6 @@
                     <th>Severity</th>
                     <th>Finding Title</th>
                     <th>Source Engine</th>
-                    <th>Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -81,18 +79,14 @@
                     <td><span class="sev-ring sev-{{ f.severity|lower }}"></span>{{ f.severity }}</td>
                     <td>{{ f.title }}</td>
                     <td><span class="source-badge">{{ f.source_engine }}</span></td>
-                    <td>
-                        <select class="fix-tracker">
-                            <option {% if f.status == 'Open' %}selected{% endif %}>Open</option>
-                            <option {% if f.status == 'In Progress' %}selected{% endif %}>In Progress</option>
-                            <option>Fixed</option>
-                            <option>Wont-Fix</option>
-                        </select>
-                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <a href="/" class="btn btn-secondary">← Start New Scan</a>
+        </div>
     </div>
 
     <script>
