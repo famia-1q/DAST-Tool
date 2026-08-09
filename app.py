@@ -56,7 +56,7 @@ def get_dynamic_findings(target_type):
 
 def run_scan_async(scan_id, target_type, target_value, client_name, file_path=None):
     try:
-        SCAN_STATUS[scan_id] = {'status': 'running', 'progress': 10, 'message': 'Initializing scan...', 'client': client_name}
+        SCAN_STATUS[scan_id] = {'status': 'running', 'progress': 10, 'message': 'Initializing scan...', 'client': client_name, 'scan_id': scan_id}
         if target_type == 'url': cmd = [sys.executable, str(ORCHESTRATOR_PATH), target_value]
         else: cmd = [sys.executable, str(ORCHESTRATOR_PATH), file_path]
         
@@ -141,6 +141,15 @@ def generate_report(scan_id):
         'linux': 'Linux Package Binary Analysis Report of Findings'
     }
     report_title = titles.get(target_type, 'Unified Security Assessment Report of Findings')
+    
+    engines_map = {
+        'url': 'OWASP ZAP, Nikto',
+        'mobile': 'MobSF',
+        'windows': 'pefile, Manalyze, YARA',
+        'linux': 'dpkg-deb, LIEF, checksec, YARA'
+    }
+    engines_used = engines_map.get(target_type, 'OWASP ZAP, Nikto')
+    
     findings = get_dynamic_findings(target_type)
 
     high_count = sum(1 for f in findings if f['severity'] == 'High')
@@ -152,6 +161,7 @@ def generate_report(scan_id):
     html_content = render_template('report_template.html',
         scan_id=scan_id, scan_date=datetime.now().strftime("%B %d, %Y"),
         report_title=report_title, client_name=client_name, findings=findings, 
+        engines_used=engines_used,
         high_count=high_count, medium_count=medium_count, low_count=low_count, info_count=info_count, total_count=total_count
     )
     
@@ -169,7 +179,8 @@ def show_results(scan_id):
     client_name = status.get('client', 'Acme Corp')
     findings = get_dynamic_findings(target_type)
     
-    return render_template('results.html', scan_result=status, findings=findings, client_name=client_name)
+    # FIXED: Pass scan_id explicitly to template
+    return render_template('results.html', scan_result=status, scan_id=scan_id, findings=findings, client_name=client_name)
 
 if __name__ == '__main__':
     print("=" * 60)

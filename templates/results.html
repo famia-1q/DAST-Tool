@@ -22,24 +22,19 @@
         .sev-medium { background-color: #ea580c; }
         .sev-low { background-color: #ca8a04; }
         .sev-info { background-color: #2563eb; }
-        .btn { display: inline-block; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; transition: all 0.3s; }
-        .btn-pdf { background: #7fff00; color: #0a192f; }
-        .btn-pdf:hover { background: #66cc00; transform: translateY(-2px); }
-        .btn-secondary { background: #6c757d; color: white; }
-        .btn-secondary:hover { background: #5a6268; }
+        .btn { display: inline-block; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; border: none; cursor: pointer; transition: all 0.3s; background: #6c757d; color: white; }
+        .btn:hover { background: #5a6268; }
     </style>
 </head>
 <body>
     <div class="dashboard-container">
         <div class="header">
             <h1>🛡️ iSeeWaves Scan Results</h1>
-            <!-- UPDATED: Links back to progress page -->
-            <a href="/scan/{{ scan_result.scan_id }}/progress" class="btn btn-pdf">📄 Download PDF Report</a>
         </div>
 
         <div class="client-info">
             <p><strong>Client:</strong> {{ client_name }}</p>
-            <p><strong>Scan ID:</strong> {{ scan_result.scan_id }}</p>
+            <p><strong>Scan ID:</strong> {{ scan_id }}</p>
             <p><strong>Target Type:</strong> {{ scan_result.target_type|upper }}</p>
             <p><strong>Status:</strong> <span style="color: #28a745; font-weight: bold;">Completed</span></p>
         </div>
@@ -85,7 +80,8 @@
         </table>
         
         <div style="margin-top: 30px; text-align: center;">
-            <a href="/" class="btn btn-secondary">← Start New Scan</a>
+            <!-- FIXED: Use scan_id variable directly -->
+            <a href="/scan/{{ scan_id }}/progress" class="btn">← Back to Progress Page</a>
         </div>
     </div>
 
