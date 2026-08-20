@@ -1,21 +1,32 @@
+# Python virtual environment
+venv/
+env/
 
-# --- DAST-Tool Cleanup Rules ---
-# Test artifacts and binaries
-*.exe
-*.deb
-*.apk
-*.ipa
-dummy_*
-test.apk
-test.exe
-test.deb
-
-# Generated reports and temporary orchestrator files
+# Uploaded files and generated PDF reports
+uploads/
 reports/
-orchestrator/*.json
-orchestrator/*.yaml
-orchestrator/temp_*/
+*.pdf
 
-# Python cache
-__pycache__/
-*.pyc
+# Temporary scan artifacts (DO NOT COMMIT)
+apk_decompiled/
+Manalyze/
+DAST-Tool/
+manalyze_report.json
+pe_report.txt
+cert_pinning.txt
+data_storage.txt
+insecure_connections.txt
+manifest_analysis.txt
+secrets_found.txt
+yara_report.txt
+nikto_*.json
+
+# Environment variables (NEVER COMMIT)
+.env
+.env.local
+
+# OS and IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

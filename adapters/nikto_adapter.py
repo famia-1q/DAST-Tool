@@ -1,155 +1,155 @@
+#!/usr/bin/env python3
 import subprocess
 import json
 import os
 import uuid
+import shutil
 import logging
-import signal
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 
 def scan_web_target(target_url: str) -> list:
     """
-    Dynamically runs Nikto against the target URL with better timeout handling.
+    Nikto scanner - captures output directly to memory for reliability.
     """
     unified_findings = []
-    scan_id = str(uuid.uuid4())[:8]
-    output_file = f"/tmp/nikto_{scan_id}.json"
 
-    logging.info(f"[*] Starting Nikto scan against: {target_url}")
+    if not target_url.startswith(('http://', 'https://')):
+        return [{
+            "tool": "Nikto",
+            "severity": "Error",
+            "finding": "Invalid URL format",
+            "cwe": "N/A",
+            "details": "URL must start with http:// or https://",
+            "remediation": "Provide a valid URL with protocol"
+        }]
+
+    print(f"[*] Starting Nikto scan against: {target_url}")
+
+    # Check if Nikto is available
+    nikto_path = shutil.which('nikto')
+    if not nikto_path:
+        return [{
+            "tool": "Nikto",
+            "severity": "Error",
+            "finding": "Nikto not found in PATH",
+            "cwe": "N/A",
+            "details": "Searched PATH",
+            "remediation": "Install Nikto: sudo apt install nikto"
+        }]
 
     try:
-        # Run Nikto with extended timeout (10 minutes = 600 seconds)
-        # Use -timeout option to control Nikto's internal timeout
+        # ✅ FIX: Run Nikto and capture stdout directly (no file writing)
         result = subprocess.run(
             [
-                'nikto', 
-                '-h', target_url, 
-                '-Format', 'json', 
-                '-output', output_file,
-                '-timeout', '300',  # Nikto's internal timeout per request
-                '-maxtime', '600'   # Maximum total scan time
+                'nikto',
+                '-h', target_url,
+                '-Format', 'json',
+                '-timeout', '60',
+                '-maxtime', '120'
             ],
             capture_output=True,
             text=True,
-            timeout=900  # Python subprocess timeout (15 minutes)
+            timeout=300
         )
-
-        logging.info(f"Nikto exit code: {result.returncode}")
         
-        # Parse JSON output
-        if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+        print(f"[*] Nikto exit code: {result.returncode}")
+        
+        # Try to parse the stdout as JSON
+        raw_output = result.stdout.strip()
+        
+        if raw_output:
             try:
-                with open(output_file, 'r', encoding='utf-8', errors='ignore') as f:
-                    data = json.load(f)
+                # Nikto sometimes outputs a list of JSON objects, sometimes a single object
+                # We try to parse it directly first
+                data = json.loads(raw_output)
                 
-                logging.info(f"Parsed Nikto JSON successfully")
-                
-                # Handle different Nikto JSON structures
                 vulnerabilities = []
                 if isinstance(data, list):
                     vulnerabilities = data
                 elif isinstance(data, dict):
-                    if 'nikto' in data and 'scandetails' in data['nikto']:
-                        for scan in data['nikto']['scandetails']:
-                            vulnerabilities.extend(scan.get('vulnerabilities', []))
-                    elif 'vulnerabilities' in data:
+                    if 'vulnerabilities' in data:
                         vulnerabilities = data['vulnerabilities']
+                    else:
+                        vulnerabilities = [data]
                 
-                for vuln in vulnerabilities:
-                    raw_severity = str(vuln.get("severity", "1"))
-                    severity_map = {"0": "Info", "1": "Low", "2": "Medium", "3": "High", "4": "Critical"}
-                    severity = severity_map.get(raw_severity, "Low")
-                    
-                    finding_id = vuln.get("id", "N/A")
-                    msg = vuln.get("msg", "Web vulnerability detected")
-                    uri = vuln.get("uri", "/")
-                    target_host = vuln.get("targethostname", target_url)
-                    
-                    unified_findings.append({
-                        "tool": "Nikto",
-                        "severity": severity,
-                        "finding": f"OSVDB-{finding_id}: {msg}",
-                        "cwe": "CWE-693",
-                        "details": f"URL: {target_host}{uri}",
-                        "remediation": "Review and fix the identified vulnerability"
-                    })
+                print(f"[*] Found {len(vulnerabilities)} vulnerabilities in JSON")
                 
-                if not unified_findings:
-                    unified_findings.append({
-                        "tool": "Nikto",
-                        "severity": "Info",
-                        "finding": "No vulnerabilities detected",
-                        "cwe": "N/A",
-                        "details": f"Target {target_url} appears secure against standard Nikto checks",
-                        "remediation": "N/A"
-                    })
+                for idx, vuln in enumerate(vulnerabilities[:20], 1):
+                    if not vuln:
+                        continue
                     
-            except json.JSONDecodeError as e:
-                logging.error(f"JSON decode error: {e}")
-                # Fallback: try to extract info from stdout
-                if result.stdout:
-                    unified_findings.append({
-                        "tool": "Nikto",
-                        "severity": "Info",
-                        "finding": "Scan completed (parsing issues)",
-                        "cwe": "N/A",
-                        "details": f"Nikto ran but JSON parsing failed. Raw output: {result.stdout[:500]}",
-                        "remediation": "N/A"
-                    })
-        else:
-            # No JSON file created - use stdout/stderr
-            if result.stdout or result.stderr:
+                    severity = "Low"
+                    if isinstance(vuln, dict):
+                        sev = str(vuln.get("severity", "1"))
+                        severity_map = {"0": "Info", "1": "Low", "2": "Medium", "3": "High", "4": "Critical"}
+                        severity = severity_map.get(sev, "Low")
+                        
+                        msg = vuln.get("msg", vuln.get("message", "Vulnerability found"))
+                        uri = vuln.get("uri", vuln.get("url", "/"))
+                        finding_id = vuln.get("id", f"OSVDB-{idx}")
+                        
+                        unified_findings.append({
+                            "tool": "Nikto",
+                            "severity": severity,
+                            "finding": f"{finding_id}: {msg[:100]}",
+                            "cwe": vuln.get("cweid", "CWE-693"),
+                            "details": f"URL: {uri}",
+                            "remediation": "Review and fix the vulnerability"
+                        })
+                
+            except json.JSONDecodeError:
+                # If JSON parsing fails, it might be plain text output
+                print("[!] JSON parsing failed, treating as text output")
                 unified_findings.append({
                     "tool": "Nikto",
                     "severity": "Info",
-                    "finding": "Scan completed with informational findings",
+                    "finding": "Nikto scan completed (text output)",
                     "cwe": "N/A",
-                    "details": f"Nikto output: {result.stdout[:300] if result.stdout else result.stderr[:300]}",
+                    "details": raw_output[:500],
                     "remediation": "N/A"
+                })
+        else:
+            # If stdout is empty, check stderr
+            if result.stderr:
+                unified_findings.append({
+                    "tool": "Nikto",
+                    "severity": "Error",
+                    "finding": "Nikto returned errors",
+                    "cwe": "N/A",
+                    "details": result.stderr[:500],
+                    "remediation": "Check target URL or Nikto installation"
                 })
             else:
                 unified_findings.append({
                     "tool": "Nikto",
                     "severity": "Info",
-                    "finding": "Scan completed with no findings",
+                    "finding": "No vulnerabilities detected",
                     "cwe": "N/A",
-                    "details": "Nikto ran successfully but returned no vulnerabilities",
+                    "details": "Nikto found no issues",
                     "remediation": "N/A"
                 })
 
     except subprocess.TimeoutExpired:
-        logging.error("Nikto scan timed out")
+        print("[!] Nikto scan timed out")
         unified_findings.append({
             "tool": "Nikto",
             "severity": "Warning",
-            "finding": "Scan timed out - partial results may be available",
+            "finding": "Nikto scan timed out",
             "cwe": "N/A",
-            "details": "The scan exceeded the time limit. This can happen with slow or unresponsive targets. Try scanning a faster target or increase timeout settings.",
-            "remediation": "Ensure target is accessible and not blocking automated scanners"
+            "details": "Scan exceeded 5 minute timeout",
+            "remediation": "Target may be slow or blocking scans"
         })
         
-        # Try to get partial results even after timeout
-        if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
-            try:
-                with open(output_file, 'r') as f:
-                    data = json.load(f)
-                # Parse partial results...
-                logging.info("Partial results recovered after timeout")
-            except:
-                pass
-                
     except Exception as e:
-        logging.error(f"Nikto scan failed: {str(e)}")
+        print(f"[!] Unexpected error: {e}")
         unified_findings.append({
             "tool": "Nikto",
             "severity": "Error",
-            "finding": "Scan execution failed",
+            "finding": "Unexpected error during scan",
             "cwe": "N/A",
             "details": f"Error: {str(e)}",
-            "remediation": "Ensure Nikto is installed and target URL is valid"
+            "remediation": "Check logs and installation"
         })
-    finally:
-        if os.path.exists(output_file):
-            os.remove(output_file)
 
     return unified_findings

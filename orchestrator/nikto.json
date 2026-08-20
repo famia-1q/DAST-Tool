@@ -1,1 +1,0 @@
-[{"host":"testphp.vulnweb.com","ip":"44.228.249.3","port":"80","banner":"","vulnerabilities":[{"id": "0","method":"GET","url":"/","msg":"Unable to connect to testphp.vulnweb.com:80."}]}]
