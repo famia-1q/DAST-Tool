@@ -1,46 +1,94 @@
-import json
 import os
 
-def parse_pefile_report(report_path):
-    """Parse pefile JSON output into myESI unified schema."""
+def scan_exe_target(file_path):
     findings = []
-    
-    # Check if file exists to prevent crashes
-    if not os.path.exists(report_path):
-        print(f"[Adapter] ⚠️ pefile report not found at {report_path}")
-        return findings
+
+    # Check if file exists
+    if not os.path.exists(file_path):
+        return [{
+            "tool": "pefile", 
+            "severity": "Error", 
+            "finding": "File not found", 
+            "cwe": "N/A", 
+            "details": f"Path: {file_path}", 
+            "remediation": "Ensure the file was uploaded correctly."
+        }]
+
+    # Check file size
+    file_size = os.path.getsize(file_path)
+    if file_size == 0:
+        return [{
+            "tool": "pefile", 
+            "severity": "Error", 
+            "finding": "File is empty", 
+            "cwe": "N/A", 
+            "details": "Uploaded file has 0 bytes", 
+            "remediation": "Re-upload the file."
+        }]
 
     try:
-        with open(report_path, 'r') as f:
-            data = json.load(f)
-    except json.JSONDecodeError:
-        print(f"[Adapter] ⚠️ Failed to parse JSON from {report_path}")
-        return findings
+        import pefile
+        
+        print(f"[*] Analyzing: {file_path} (Size: {file_size} bytes)")
+        pe = pefile.PE(file_path)
+        file_name = os.path.basename(file_path)
+        
+        # Check ASLR
+        is_aslr = bool(pe.OPTIONAL_HEADER.DllCharacteristics & 
+                      pefile.DLL_CHARACTERISTICS['IMAGE_DLLCHARACTERISTICS_DYNAMIC_BASE'])
+        
+        # Check DEP
+        is_dep = bool(pe.OPTIONAL_HEADER.DllCharacteristics & 
+                     pefile.DLL_CHARACTERISTICS['IMAGE_DLLCHARACTERISTICS_NX_COMPAT'])
 
-    file_name = data.get("file_name", "Unknown File")
-    
-    # Check 1: Is the file packed/obfuscated?
-    if data.get("is_packed"):
-        findings.append({
-            "severity": "Medium",
-            "title": "PE File Appears to be Packed or Obfuscated",
-            "description": "The executable shows signs of packing (high entropy sections detected). This can hide malicious code or intellectual property.",
-            "location": f"File: {file_name}",
-            "remediation_guidance": "Review the packing tool used. If this is a legitimate protector, document it. Otherwise, investigate for hidden payloads.",
-            "source": "pefile",
-            "framework_mapping": ["CWE-656", "MITRE ATT&CK T1027"]
-        })
-    
-    # Check 2: Are there suspicious API imports?
-    if data.get("is_suspicious"):
-        findings.append({
-            "severity": "High",
-            "title": "Suspicious API Imports Detected",
-            "description": "The executable imports APIs commonly used in malicious activities (e.g., VirtualAlloc, WriteProcessMemory, CreateRemoteThread).",
-            "location": f"File: {file_name}",
-            "remediation_guidance": "Investigate why these memory-manipulation APIs are needed. Verify they are not being misused for code injection.",
-            "source": "pefile",
-            "framework_mapping": ["CWE-78", "MITRE ATT&CK T1055"]
-        })
+        if not is_aslr:
+            findings.append({
+                "tool": "pefile",
+                "severity": "High",
+                "finding": "Missing Security Mitigation: ASLR Disabled",
+                "cwe": "CWE-121",
+                "details": f"'{file_name}' compiled without ASLR",
+                "remediation": "Recompile with /DYNAMICBASE flag"
+            })
+        
+        if not is_dep:
+            findings.append({
+                "tool": "pefile",
+                "severity": "High",
+                "finding": "Missing Security Mitigation: DEP Disabled",
+                "cwe": "CWE-121",
+                "details": f"'{file_name}' compiled without DEP/NX",
+                "remediation": "Recompile with /NXCOMPAT flag"
+            })
+
+        if is_aslr and is_dep:
+            findings.append({
+                "tool": "pefile",
+                "severity": "Info",
+                "finding": "Security Mitigations Enabled",
+                "cwe": "N/A",
+                "details": f"'{file_name}' has ASLR and DEP enabled",
+                "remediation": "N/A"
+            })
+
+    except ImportError:
+        return [{
+            "tool": "pefile", 
+            "severity": "Error", 
+            "finding": "pefile library not installed", 
+            "cwe": "N/A", 
+            "details": "Run: pip install pefile", 
+            "remediation": "Install pefile library"
+        }]
+    except Exception as e:
+        error_msg = str(e)
+        return [{
+            "tool": "pefile", 
+            "severity": "Error", 
+            "finding": f"Analysis failed: {error_msg[:50]}", 
+            "cwe": "N/A", 
+            "details": f"Error: {error_msg}", 
+            "remediation": "Ensure file is a valid Windows PE executable (.exe or .dll)"
+        }]
 
     return findings

@@ -1,44 +1,102 @@
-import json
+import subprocess
 import os
+import shutil
 
-def parse_checksec_report(report_path):
-    """Parse checksec JSON output into myESI unified schema."""
+def scan_deb_target(file_path):
     findings = []
-    
-    # Check if file exists to prevent crashes
-    if not os.path.exists(report_path):
-        print(f"[Adapter] ⚠️ checksec report not found at {report_path}")
-        return findings
+    extract_dir = "/tmp/deb_extracted_dynamic"
+
+    if not os.path.exists(file_path):
+        return [{"tool": "checksec", "severity": "Error", "finding": "File not found", "cwe": "N/A", "details": f"Path: {file_path}", "remediation": "Ensure file exists."}]
 
     try:
-        with open(report_path, 'r') as f:
-            data = json.load(f)
-    except json.JSONDecodeError:
-        print(f"[Adapter] ⚠️ Failed to parse JSON from {report_path}")
-        return findings
+        # Extract DEB
+        if os.path.exists(extract_dir):
+            shutil.rmtree(extract_dir)
+        os.makedirs(extract_dir)
+        
+        print(f"[*] Extracting DEB: {file_path}")
+        subprocess.run(['dpkg-deb', '-x', file_path, extract_dir], check=True, capture_output=True)
 
-    file_name = data.get("file", "Unknown File")
-    
-    # Map checksec features to human-readable names and severity
-    security_features = {
-        "relro": {"name": "RELRO (Relocation Read-Only)", "severity": "Medium"},
-        "canary": {"name": "Stack Canary", "severity": "High"},
-        "nx": {"name": "NX (No-Execute)", "severity": "High"},
-        "pie": {"name": "PIE (Position Independent Executable)", "severity": "Medium"}
-    }
-    
-    for feature, details in security_features.items():
-        # checksec might output "No", "Disabled", or False for missing protections
-        status = data.get(feature, "").lower()
-        if status in ["no", "disabled", "false", False]:
+        # Check for World-Writable Files
+        print("[*] Checking for world-writable files...")
+        find_result = subprocess.run(
+            ['find', extract_dir, '-type', 'f', '-perm', '-002'],
+            capture_output=True, text=True
+        )
+        
+        if find_result.stdout.strip():
             findings.append({
-                "severity": details["severity"],
-                "title": f"{details['name']} is Disabled",
-                "description": f"The binary does not have {details['name']} protection enabled, making it more vulnerable to memory corruption exploitation.",
-                "location": f"File: {file_name}",
-                "remediation_guidance": f"Enable {details['name']} during compilation (e.g., using GCC/Clang flags) to improve binary security.",
-                "source": "checksec",
-                "framework_mapping": ["CWE-693", "OWASP Binary Analysis"]
+                "tool": "dpkg-deb/find",
+                "severity": "High",
+                "finding": "World-Writable Files Detected",
+                "cwe": "CWE-732",
+                "details": f"Files: {find_result.stdout.strip().splitlines()[0]}",
+                "remediation": "Fix permissions with chmod"
             })
-    
+
+        # Run Checksec
+        print("[*] Running checksec...")
+        checksec_result = subprocess.run(
+            ['checksec', '--dir', extract_dir],
+            capture_output=True, text=True
+        )
+        
+        output = checksec_result.stdout + "\n" + checksec_result.stderr
+        print(f"[*] Checksec output:\n{output[:500]}")  # Debug print
+        
+        # Check for various missing mitigations
+        if "No PIE" in output or "pie: no" in output.lower() or "pie: disabled" in output.lower():
+            findings.append({
+                "tool": "checksec",
+                "severity": "Medium",
+                "finding": "Missing PIE (Position Independent Executable)",
+                "cwe": "CWE-121",
+                "details": "Binaries not compiled with PIE",
+                "remediation": "Recompile with -fPIE -pie flags"
+            })
+            
+        if "No RELRO" in output or "relro: no" in output.lower():
+            findings.append({
+                "tool": "checksec",
+                "severity": "Medium",
+                "finding": "Missing RELRO",
+                "cwe": "CWE-121",
+                "details": "Binaries missing RELRO protection",
+                "remediation": "Recompile with -Wl,-z,relro,-z,now"
+            })
+            
+        if "No canary" in output or "canary: no" in output.lower():
+            findings.append({
+                "tool": "checksec",
+                "severity": "High",
+                "finding": "Missing Stack Canary",
+                "cwe": "CWE-121",
+                "details": "Binaries lack stack canaries",
+                "remediation": "Recompile with -fstack-protector-strong"
+            })
+
+        if not findings:
+            findings.append({
+                "tool": "checksec",
+                "severity": "Info",
+                "finding": "Package passed basic security checks",
+                "cwe": "N/A",
+                "details": "No critical issues detected in this package",
+                "remediation": "N/A"
+            })
+
+    except Exception as e:
+        findings.append({
+            "tool": "DEB Analyzer",
+            "severity": "Error",
+            "finding": f"Analysis failed: {str(e)[:50]}",
+            "cwe": "N/A",
+            "details": str(e),
+            "remediation": "Ensure file is a valid DEB package"
+        })
+    finally:
+        if os.path.exists(extract_dir):
+            shutil.rmtree(extract_dir)
+
     return findings
