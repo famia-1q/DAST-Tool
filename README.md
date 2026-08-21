@@ -88,9 +88,7 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# 4. Set environment variables (IMPORTANT!)
-export FLASK_SECRET_KEY=$(openssl rand -hex 32)
-export WEBHOOK_URL=""  # Optional: Add your CI/CD webhook URL
+
 
 # 5. Run the application
 python3 app.py
