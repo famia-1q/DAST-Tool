@@ -56,20 +56,3 @@ def generate_pdf_report(unified_data: dict, output_pdf_path: str):
     elements.append(table)
     doc.build(elements)
     print(f"✅ PDF Report successfully generated: {output_pdf_path}")
-
-if __name__ == "__main__":
-    mock_data = {
-        "myESI_version": "1.0",
-        "engine_used": "ZAP",
-        "total_findings": 1,
-        "findings": [{
-            "severity": "HIGH",
-            "title": "SQL Injection",
-            "description": "SQL injection found in login form.",
-            "location": "https://example.com/login",
-            "remediation_guidance": "Use parameterized queries.",
-            "source": "OWASP ZAP",
-            "framework_mapping": ["OWASP ASVS", "OWASP API Security Top 10"]
-        }]
-    }
-    generate_pdf_report(mock_data, "reports/myESI_Audit_Report.pdf")

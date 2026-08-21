@@ -47,18 +47,6 @@
         },
         {
             "severity": "Medium",
-            "title": "PE File Appears to be Packed or Obfuscated",
-            "description": "The executable shows signs of packing (high entropy sections detected). This can hide malicious code or intellectual property.",
-            "location": "File: test.exe",
-            "remediation_guidance": "Review the packing tool used. If this is a legitimate protector, document it. Otherwise, investigate for hidden payloads.",
-            "source": "pefile",
-            "framework_mapping": [
-                "CWE-656",
-                "MITRE ATT&CK T1027"
-            ]
-        },
-        {
-            "severity": "Medium",
             "title": "Missing Signature",
             "description": "Binary is not digitally signed",
             "location": "File: Unknown File",
@@ -68,6 +56,14 @@
                 "CWE-693",
                 "OWASP Binary Analysis"
             ]
+        },
+        {
+            "tool": "checksec",
+            "severity": "Info",
+            "finding": "checksec metadata parsed",
+            "cwe": "N/A",
+            "details": "Security metadata for 'htop' was parsed successfully.",
+            "remediation": "N/A"
         }
     ],
     "summary": {
