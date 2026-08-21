@@ -88,11 +88,8 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-
-
-# 5. Run the application
+# 4. Run the application
 python3 app.py
-
 
 Access the Web Interface
 Open your browser and navigate to:
