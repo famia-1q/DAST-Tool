@@ -6,7 +6,7 @@
 <style>
     @page { size: A4; margin: 0; background-color: #1a1f2e; @bottom-center { content: counter(page); font-family: Arial; font-size: 10pt; color: #9ca3af; } }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.5; color: #ffffff; background-color: #1a1f2e; }
+    body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; line-height: 1.6; color: #ffffff; background-color: #1a1f2e; }
 
     .cover { background-color: #1a1f2e; color: #ffffff; height: 297mm; padding: 60px 70px; page-break-after: always; display: flex; flex-direction: column; position: relative; }
     .cover-header { margin-bottom: 60px; }
@@ -47,6 +47,7 @@
     .sev-low { color: #eab308; font-weight: bold; }
     .sev-info { color: #3b82f6; font-weight: bold; }
     .source-badge { background-color: #0f1419; color: #7fff00; padding: 3px 8px; border: 1px solid #7fff00; border-radius: 3px; font-size: 9pt; font-weight: bold; }
+    .evidence-block { background-color: #000000; color: #7fff00; padding: 10px; font-family: monospace; font-size: 9pt; border: 1px solid #4b5563; margin-top: 10px; white-space: pre-wrap; }
 </style>
 </head>
 <body>
@@ -70,6 +71,7 @@
 <div class="content">
     <h1>Statement of Confidentiality</h1>
     <p>The contents of this document have been developed by iSeeWaves (Private) Limited. iSeeWaves considers the contents of this document to be proprietary and business confidential information. This information is to be used only in the performance of its intended use. This document may not be released to another vendor, business partner or contractor without prior written consent from iSeeWaves.</p>
+    <p>The contents of this document do not constitute legal advice. iSeeWaves' offer of services that relate to compliance, litigation or other legal interests are not intended as legal counsel and should not be taken as such. The assessment detailed herein is against the specified target for security validation purposes.</p>
 </div>
 
 <!-- APPLICATION INFORMATION -->
@@ -87,15 +89,76 @@
     <p class="table-caption">Table 1: Application Information</p>
     
     <h2>Scope</h2>
-    <p>The scope of this assessment was the {{ client_name }} target artifact and associated endpoints. Testing was performed from a non-evasive standpoint with the goal of uncovering as many misconfigurations and vulnerabilities as possible.</p>
+    <p>The scope of this assessment was the {{ client_name }} target artifact and associated endpoints. Testing was performed from a non-evasive standpoint with the goal of uncovering as many misconfigurations and vulnerabilities as possible. The assessment focused on identifying security weaknesses that could lead to unauthorized access, data leakage, or system compromise.</p>
 </div>
 
 <!-- EXECUTIVE SUMMARY -->
 <div class="content">
     <h1>Executive Summary</h1>
     <p>{{ client_name }} contracted iSeeWaves (Private) Limited to perform a security assessment to identify security weaknesses, determine the impact, document all findings in a clear and repeatable manner, and provide remediation recommendations.</p>
+    
     <h2>Approach</h2>
     <p>iSeeWaves performed testing under a "black box" approach on {{ scan_date }} without credentials or any advance knowledge of {{ client_name }}'s environment. Testing was performed from a non-evasive standpoint with the goal of uncovering as many misconfigurations and vulnerabilities as possible.</p>
+    
+    <h2>Assessment Overview</h2>
+    <p>During the course of testing, iSeeWaves uncovered a total of <strong>{{ total_count }}</strong> findings that pose a material risk to {{ client_name }}'s information systems. The findings were categorized by severity level, with <strong>{{ high_count }}</strong> High-risk, <strong>{{ medium_count }}</strong> Medium-risk, <strong>{{ low_count }}</strong> Low-risk, and <strong>{{ info_count }}</strong> Informational findings.</p>
+    <p>{% if high_count > 0 %}The presence of High severity findings indicates critical misconfigurations or vulnerabilities that could lead to immediate system compromise. Immediate remediation is strongly advised.{% else %}No critical vulnerabilities were detected, indicating a strong baseline security posture, though manual testing is recommended.{% endif %}</p>
+</div>
+
+<!-- NEW SECTION: TESTING METHODOLOGY & FRAMEWORKS -->
+<div class="content">
+    <h1>Testing Methodology & Frameworks</h1>
+    <p>iSeeWaves employs industry-standard methodologies to ensure comprehensive and repeatable security assessments. The following frameworks guided this assessment:</p>
+    
+    <h2>OWASP Testing Framework</h2>
+    <p>The Open Web Application Security Project (OWASP) Testing Framework provides a structured approach to web application security testing. It covers information gathering, configuration management, identity management, authorization testing, session management, input validation, error handling, cryptography, business logic, and client-side testing.</p>
+    
+    <h2>Penetration Testing Execution Standard (PTES)</h2>
+    <p>PTES is a comprehensive guideline for conducting penetration tests. It includes seven major sections: Pre-engagement Interactions, Intelligence Gathering, Threat Modeling, Vulnerability Analysis, Exploitation, Post Exploitation, and Reporting. This assessment adhered to the Intelligence Gathering, Vulnerability Analysis, and Reporting phases of PTES.</p>
+    
+    <h2>The CIA Triad</h2>
+    <p>All findings were evaluated based on their impact on the CIA Triad:</p>
+    <ul>
+        <li><strong>Confidentiality:</strong> Ensuring that information is not disclosed to unauthorized individuals, entities, or processes.</li>
+        <li><strong>Integrity:</strong> Ensuring that information is accurate, complete, and has not been modified by unauthorized parties.</li>
+        <li><strong>Availability:</strong> Ensuring that information and systems are accessible and usable upon demand by authorized users.</li>
+    </ul>
+</div>
+
+<!-- NEW SECTION: COMPREHENSIVE CVSS SCORING -->
+<div class="content">
+    <h1>Comprehensive CVSS v3.1 Scoring System</h1>
+    <p>The Common Vulnerability Scoring System (CVSS) v3.1 is used to communicate the characteristics and severity of software vulnerabilities. The Base Score is calculated from two sets of metrics: Exploitability and Impact.</p>
+    
+    <h2>Exploitability Metrics</h2>
+    <table>
+        <tr><th>Metric</th><th>Description</th></tr>
+        <tr><td>Attack Vector (AV)</td><td>Reflects the context by which vulnerability exploitation is possible (Network, Adjacent, Local, Physical).</td></tr>
+        <tr><td>Attack Complexity (AC)</td><td>Describes the conditions beyond the attacker's control that must exist to exploit the vulnerability (Low, High).</td></tr>
+        <tr><td>Privileges Required (PR)</td><td>Describes the level of privileges an attacker must possess before successfully exploiting the vulnerability (None, Low, High).</td></tr>
+        <tr><td>User Interaction (UI)</td><td>Captures the requirement for a user, other than the attacker, to participate in the successful compromise (None, Required).</td></tr>
+    </table>
+    <p class="table-caption">Table 2: CVSS Exploitability Metrics</p>
+
+    <h2>Impact Metrics</h2>
+    <table>
+        <tr><th>Metric</th><th>Description</th></tr>
+        <tr><td>Confidentiality (C)</td><td>Measures the impact to the confidentiality of the information managed by the resource (None, Low, High).</td></tr>
+        <tr><td>Integrity (I)</td><td>Measures the impact to integrity of a successfully exploited vulnerability (None, Low, High).</td></tr>
+        <tr><td>Availability (A)</td><td>Measures the impact to the availability of the impacted component (None, Low, High).</td></tr>
+    </table>
+    <p class="table-caption">Table 3: CVSS Impact Metrics</p>
+
+    <h2>Severity Ratings</h2>
+    <table>
+        <tr><th>Base Score Range</th><th>Severity Rating</th><th>Definition</th></tr>
+        <tr><td>9.0 - 10.0</td><td class="sev-high">Critical</td><td>Exploitation is easy and causes catastrophic impact. Immediate action required.</td></tr>
+        <tr><td>7.0 - 8.9</td><td class="sev-high">High</td><td>Exploitation will cause substantial harm. Significant political, financial, and/or legal damage is likely.</td></tr>
+        <tr><td>4.0 - 6.9</td><td class="sev-medium">Medium</td><td>Exploitation will significantly impact confidentiality, integrity, and/or availability.</td></tr>
+        <tr><td>0.1 - 3.9</td><td class="sev-low">Low</td><td>Exploitation will cause minimal impact to operations.</td></tr>
+        <tr><td>0.0</td><td class="sev-info">Info/None</td><td>Observations for areas of improvement. Do not represent security vulnerabilities on their own.</td></tr>
+    </table>
+    <p class="table-caption">Table 4: CVSS Severity Ratings</p>
 </div>
 
 <!-- SUMMARY OF FINDINGS -->
@@ -106,27 +169,31 @@
         <tr><th>Finding Severity</th><th>High</th><th>Medium</th><th>Low</th><th>Info</th><th>Total</th></tr>
         <tr><td><strong>Count</strong></td><td class="sev-high">{{ high_count }}</td><td class="sev-medium">{{ medium_count }}</td><td class="sev-low">{{ low_count }}</td><td class="sev-info">{{ info_count }}</td><td><strong>{{ total_count }}</strong></td></tr>
     </table>
-    <p class="table-caption">Table 2: Severity Summary</p>
+    <p class="table-caption">Table 5: Severity Summary</p>
     <table>
         <tr><th>Finding #</th><th>Severity Level</th><th>Finding Name</th><th>Source Engine</th></tr>
         {% for f in findings %}
         <tr><td>{{ f.id }}.</td><td class="sev-{{ f.severity|lower }}">{{ f.severity }}</td><td>{{ f.title }}</td><td><span class="source-badge">{{ f.source_engine }}</span></td></tr>
         {% endfor %}
     </table>
-    <p class="table-caption">Table 3: Finding List</p>
+    <p class="table-caption">Table 6: Finding List</p>
 </div>
 
 <!-- TECHNICAL FINDINGS -->
 <div class="content">
     <h1>Technical Findings Details</h1>
+    <p>This section provides a detailed technical breakdown of each finding identified during the assessment. Each finding includes the root cause, security impact, affected components, and specific remediation steps.</p>
     {% for f in findings %}
     <div class="finding-box">
         <div class="finding-title">{{ f.id }}. {{ f.title }} - <span class="sev-{{ f.severity|lower }}">{{ f.severity }}</span></div>
         <div class="finding-meta"><strong>Source:</strong> <span class="source-badge">{{ f.source_engine }}</span> &nbsp;&nbsp;|&nbsp;&nbsp; <strong>CWE:</strong> {{ f.cwe }} &nbsp;&nbsp;|&nbsp;&nbsp; <strong>CVSS 3.1 Score:</strong> {{ f.cvss }}</div>
         <h3>Description (Incl. Root Cause)</h3><p>{{ f.desc }}</p>
         <h3>Security Impact</h3><p>{{ f.impact }}</p>
-        <h3>Remediation</h3><p>{{ f.remediation }}</p>
+        <h3>Affected Components</h3><p>Target: {{ client_name }}<br>Engine: {{ f.source_engine }}<br>Scan Date: {{ scan_date }}</p>
+        <h3>Remediation Steps</h3><p>{{ f.remediation }}</p>
         <h3>External References</h3><p><a href="{{ f.reference }}">{{ f.reference }}</a></p>
+        <h3>Finding Evidence</h3>
+        <div class="evidence-block">{{ f.details | default('Automated scan detected this finding during analysis.') }}</div>
     </div>
     {% endfor %}
 </div>
@@ -134,18 +201,56 @@
 <!-- REMEDIATION SUMMARY -->
 <div class="content">
     <h1>Remediation Summary</h1>
-    <p>As a result of this assessment there are several opportunities for {{ client_name }} to strengthen its security posture. Remediation efforts are prioritized below.</p>
-    <h2>Short Term</h2>
-    <ul><li>Review all High and Medium severity findings from engine outputs.</li><li>Address critical misconfigurations immediately.</li></ul>
-    <h2>Medium Term</h2>
-    <ul><li>Integrate automated scanning into CI/CD pipeline.</li><li>Configure severity-based gating.</li></ul>
-    <h2>Long Term</h2>
-    <ul><li>Perform ongoing internal vulnerability assessments.</li><li>Establish continuous compliance monitoring.</li></ul>
+    <p>As a result of this assessment there are several opportunities for {{ client_name }} to strengthen its security posture. Remediation efforts are prioritized below starting with those that will likely take the least amount of time and effort to complete.</p>
+    
+    <h2>Short Term (Immediate Action - 0-14 Days)</h2>
+    <ul>
+        <li>Review all High and Medium severity findings from engine outputs.</li>
+        <li>Address critical misconfigurations and hardcoded secrets immediately.</li>
+        <li>Rotate any exposed credentials or API keys identified in the scan.</li>
+        <li>Apply emergency patches to vulnerable components if identified.</li>
+    </ul>
+
+    <h2>Medium Term (30-60 Days)</h2>
+    <ul>
+        <li>Integrate automated DAST scanning into the CI/CD pipeline.</li>
+        <li>Configure severity-based gating to block builds with High/Critical vulnerabilities.</li>
+        <li>Implement strict least-privilege access controls and secure compilation flags (e.g., ASLR, DEP, PIE).</li>
+        <li>Conduct a manual code review for areas flagged by automated tools.</li>
+    </ul>
+
+    <h2>Long Term (Strategic - 6+ Months)</h2>
+    <ul>
+        <li>Perform ongoing internal vulnerability assessments and code reviews.</li>
+        <li>Establish continuous compliance monitoring aligned with National CERT SSDLC and OWASP standards.</li>
+        <li>Conduct regular security awareness training for development teams.</li>
+        <li>Implement a comprehensive Vulnerability Management Program (VMP).</li>
+    </ul>
+</div>
+
+<!-- NEW SECTION: GLOSSARY OF TERMS -->
+<div class="content">
+    <h1>Glossary of Cybersecurity Terms</h1>
+    <table>
+        <tr><th>Term</th><th>Definition</th></tr>
+        <tr><td>DAST</td><td>Dynamic Application Security Testing. A testing method that analyzes an application while it is running.</td></tr>
+        <tr><td>SAST</td><td>Static Application Security Testing. A testing method that analyzes source code for vulnerabilities.</td></tr>
+        <tr><td>CVE</td><td>Common Vulnerabilities and Exposures. A dictionary of publicly known information security vulnerabilities.</td></tr>
+        <tr><td>CWE</td><td>Common Weakness Enumeration. A community-developed list of software and hardware weakness types.</td></tr>
+        <tr><td>CVSS</td><td>Common Vulnerability Scoring System. An open framework for communicating the characteristics and severity of software vulnerabilities.</td></tr>
+        <tr><td>ASLR</td><td>Address Space Layout Randomization. A memory-protection process for operating systems that guards against buffer-overflow attacks.</td></tr>
+        <tr><td>DEP</td><td>Data Execution Prevention. A security feature that helps prevent damage from viruses and other security threats.</td></tr>
+        <tr><td>PIE</td><td>Position Independent Executable. Allows the executable to be loaded at any memory address, enhancing ASLR.</td></tr>
+        <tr><td>CIA Triad</td><td>Confidentiality, Integrity, and Availability. A model designed to guide policies for information security.</td></tr>
+        <tr><td>OWASP</td><td>Open Web Application Security Project. A nonprofit foundation that works to improve the security of software.</td></tr>
+    </table>
+    <p class="table-caption">Table 7: Glossary of Terms</p>
 </div>
 
 <!-- APPENDICES -->
 <div class="content">
     <h1>Appendices</h1>
+    
     <h2>Appendix A – Finding Severities</h2>
     <table>
         <tr><th>Rating</th><th>Severity Rating Definition</th></tr>
@@ -154,13 +259,40 @@
         <tr><td class="sev-low">Low</td><td>Exploitation will cause minimal impact to operations.</td></tr>
         <tr><td class="sev-info">Info</td><td>Observations for areas of improvement. Do not represent security vulnerabilities on their own.</td></tr>
     </table>
+    <p class="table-caption">Table 8: Severity Definitions</p>
+
     <h2>Appendix B – Compliance Framework Mapping</h2>
     <table>
         <tr><th>Framework</th><th>Applicable Findings</th><th>Relationship</th></tr>
-        <tr><td>OWASP Top 10</td><td>1, 2, 3</td><td>Direct mapping to A03:2021-Injection, A07:2021-XSS</td></tr>
-        <tr><td>OWASP ASVS</td><td>1, 2, 3, 4</td><td>Dynamic evidence toward ASVS verification requirements</td></tr>
-        <tr><td>National CERT SSDLC</td><td>All</td><td>Pre-production security validation & audit trail</td></tr>
+        <tr><td>OWASP Top 10 (2021)</td><td>All applicable</td><td>Direct mapping to A03:Injection, A07:XSS, A01:Broken Access Control.</td></tr>
+        <tr><td>CWE/SANS Top 25</td><td>All applicable</td><td>Maps to most dangerous software weaknesses (e.g., CWE-79, CWE-89).</td></tr>
+        <tr><td>National CERT SSDLC</td><td>All</td><td>Pre-production security validation & audit trail compliance.</td></tr>
+        <tr><td>ISO 27001</td><td>All</td><td>Supports Annex A.12 (Operations Security) and A.14 (System Acquisition).</td></tr>
     </table>
+    <p class="table-caption">Table 9: Compliance Framework Mapping</p>
+
+    <h2>Appendix C – Glossary of Tools & Technologies</h2>
+    <table>
+        <tr><th>Tool Name</th><th>Description</th></tr>
+        {% if 'ZAP' in engines_used %}<tr><td>OWASP ZAP</td><td>Open-source web application security scanner used for finding vulnerabilities in web apps during development and testing.</td></tr>{% endif %}
+        {% if 'Nikto' in engines_used %}<tr><td>Nikto</td><td>Open-source web server scanner that tests for dangerous files, outdated server software, and other configuration problems.</td></tr>{% endif %}
+        {% if 'pefile' in engines_used or 'checksec' in engines_used %}<tr><td>pefile/checksec</td><td>Python modules and tools used to parse and analyze PE/ELF binary headers for security mitigations like ASLR and DEP.</td></tr>{% endif %}
+        {% if 'Apktool' in engines_used %}<tr><td>Apktool</td><td>Tool for reverse engineering Android APK files to analyze manifest, resources, and source code for security flaws.</td></tr>{% endif %}
+        {% if 'LIEF' in engines_used %}<tr><td>LIEF</td><td>Library to Instrument Executable Formats. Used to parse, modify, and abstract ELF, PE, and Mach-O formats.</td></tr>{% endif %}
+        {% if 'YARA' in engines_used %}<tr><td>YARA</td><td>Tool aimed at helping malware researchers identify and classify malware samples using pattern matching rules.</td></tr>{% endif %}
+    </table>
+    <p class="table-caption">Table 10: Tools & Technologies</p>
+
+    <h2>Appendix D – Scan Metadata & Environment</h2>
+    <table>
+        <tr><th>Property</th><th>Value</th></tr>
+        <tr><td>Scan ID</td><td>{{ scan_id | default('N/A') }}</td></tr>
+        <tr><td>Target Artifact</td><td>{{ client_name }}</td></tr>
+        <tr><td>Engines Used</td><td>{{ engines_used }}</td></tr>
+        <tr><td>Scan Date</td><td>{{ scan_date }}</td></tr>
+        <tr><td>Report Version</td><td>1.0</td></tr>
+    </table>
+    <p class="table-caption">Table 11: Scan Metadata</p>
 </div>
 
 <!-- FINAL PAGE -->
