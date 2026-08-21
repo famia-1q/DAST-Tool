@@ -4,13 +4,11 @@ import json
 import os
 import uuid
 import shutil
-import logging
-
-logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
+import re
 
 def scan_web_target(target_url: str) -> list:
     """
-    Nikto scanner - captures output directly to memory for reliability.
+    Enhanced Nikto scanner with better vulnerability detection.
     """
     unified_findings = []
 
@@ -26,99 +24,86 @@ def scan_web_target(target_url: str) -> list:
 
     print(f"[*] Starting Nikto scan against: {target_url}")
 
-    # Check if Nikto is available
     nikto_path = shutil.which('nikto')
     if not nikto_path:
         return [{
             "tool": "Nikto",
             "severity": "Error",
-            "finding": "Nikto not found in PATH",
+            "finding": "Nikto not found",
             "cwe": "N/A",
-            "details": "Searched PATH",
-            "remediation": "Install Nikto: sudo apt install nikto"
+            "details": "Install Nikto: sudo apt install nikto",
+            "remediation": "Install Nikto"
         }]
 
     try:
-        # ✅ FIX: Run Nikto and capture stdout directly (no file writing)
-        result = subprocess.run(
-            [
-                'nikto',
-                '-h', target_url,
-                '-Format', 'json',
-                '-timeout', '60',
-                '-maxtime', '120'
-            ],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
+        result = subprocess.run([
+            'nikto',
+            '-h', target_url,
+            '-Format', 'json',
+            '-timeout', '120',
+            '-maxtime', '180',
+            '-Tuning', '123456789x'
+        ], capture_output=True, text=True, timeout=300)
         
         print(f"[*] Nikto exit code: {result.returncode}")
+        print(f"[*] Nikto stdout length: {len(result.stdout)}")
         
-        # Try to parse the stdout as JSON
-        raw_output = result.stdout.strip()
-        
-        if raw_output:
+        if result.stdout.strip():
             try:
-                # Nikto sometimes outputs a list of JSON objects, sometimes a single object
-                # We try to parse it directly first
-                data = json.loads(raw_output)
-                
+                data = json.loads(result.stdout)
                 vulnerabilities = []
+                
                 if isinstance(data, list):
                     vulnerabilities = data
                 elif isinstance(data, dict):
-                    if 'vulnerabilities' in data:
-                        vulnerabilities = data['vulnerabilities']
-                    else:
-                        vulnerabilities = [data]
+                    vulnerabilities = data.get('vulnerabilities', [data])
                 
-                print(f"[*] Found {len(vulnerabilities)} vulnerabilities in JSON")
+                print(f"[*] Parsed {len(vulnerabilities)} vulnerabilities from JSON")
                 
-                for idx, vuln in enumerate(vulnerabilities[:20], 1):
-                    if not vuln:
+                for idx, vuln in enumerate(vulnerabilities[:30], 1):
+                    if not vuln or not isinstance(vuln, dict):
                         continue
                     
-                    severity = "Low"
-                    if isinstance(vuln, dict):
-                        sev = str(vuln.get("severity", "1"))
-                        severity_map = {"0": "Info", "1": "Low", "2": "Medium", "3": "High", "4": "Critical"}
-                        severity = severity_map.get(sev, "Low")
-                        
-                        msg = vuln.get("msg", vuln.get("message", "Vulnerability found"))
-                        uri = vuln.get("uri", vuln.get("url", "/"))
-                        finding_id = vuln.get("id", f"OSVDB-{idx}")
-                        
-                        unified_findings.append({
-                            "tool": "Nikto",
-                            "severity": severity,
-                            "finding": f"{finding_id}: {msg[:100]}",
-                            "cwe": vuln.get("cweid", "CWE-693"),
-                            "details": f"URL: {uri}",
-                            "remediation": "Review and fix the vulnerability"
-                        })
-                
-            except json.JSONDecodeError:
-                # If JSON parsing fails, it might be plain text output
-                print("[!] JSON parsing failed, treating as text output")
+                    msg = vuln.get("msg", "")
+                    if not msg or "no vulnerabilities" in msg.lower():
+                        continue
+                    
+                    severity = vuln.get("severity", "1")
+                    severity_map = {
+                        "0": "Info", "1": "Low", "2": "Medium", 
+                        "3": "High", "4": "Critical"
+                    }
+                    sev = severity_map.get(str(severity), "Low")
+                    
+                    vuln_keywords = ['sql injection', 'xss', 'traversal', 
+                                   'overflow', 'exec', 'upload', 'password']
+                    is_vuln = any(keyword in msg.lower() for keyword in vuln_keywords)
+                    
+                    if is_vuln:
+                        sev = "High" if sev in ["Info", "Low"] else sev
+                    
+                    unified_findings.append({
+                        "tool": "Nikto",
+                        "severity": sev,
+                        "finding": f"{vuln.get('id', 'OSVDB-' + str(idx))}: {msg[:100]}",
+                        "cwe": vuln.get("cweid", "CWE-693"),
+                        "details": f"URL: {vuln.get('uri', '/')}\n{vuln.get('description', '')[:300]}",
+                        "remediation": "Review and fix the identified vulnerability"
+                    })
+                    
+            except json.JSONDecodeError as e:
+                print(f"[!] JSON parse failed: {e}")
+                unified_findings.extend(parse_nikto_text(result.stdout + result.stderr))
+        
+        if not unified_findings:
+            if "Unable to connect" in result.stdout or result.returncode != 0:
                 unified_findings.append({
                     "tool": "Nikto",
-                    "severity": "Info",
-                    "finding": "Nikto scan completed (text output)",
+                    "severity": "Warning",
+                    "finding": "Target unreachable or blocking scans",
                     "cwe": "N/A",
-                    "details": raw_output[:500],
-                    "remediation": "N/A"
-                })
-        else:
-            # If stdout is empty, check stderr
-            if result.stderr:
-                unified_findings.append({
-                    "tool": "Nikto",
-                    "severity": "Error",
-                    "finding": "Nikto returned errors",
-                    "cwe": "N/A",
-                    "details": result.stderr[:500],
-                    "remediation": "Check target URL or Nikto installation"
+                    "details": f"Stderr: {result.stderr[:300]}",
+                    "remediation": "Check if target is accessible"
                 })
             else:
                 unified_findings.append({
@@ -126,30 +111,66 @@ def scan_web_target(target_url: str) -> list:
                     "severity": "Info",
                     "finding": "No vulnerabilities detected",
                     "cwe": "N/A",
-                    "details": "Nikto found no issues",
+                    "details": "Target appears secure",
                     "remediation": "N/A"
                 })
 
     except subprocess.TimeoutExpired:
-        print("[!] Nikto scan timed out")
         unified_findings.append({
             "tool": "Nikto",
             "severity": "Warning",
-            "finding": "Nikto scan timed out",
+            "finding": "Scan timed out",
             "cwe": "N/A",
             "details": "Scan exceeded 5 minute timeout",
             "remediation": "Target may be slow or blocking scans"
         })
-        
     except Exception as e:
-        print(f"[!] Unexpected error: {e}")
         unified_findings.append({
             "tool": "Nikto",
             "severity": "Error",
-            "finding": "Unexpected error during scan",
+            "finding": "Scan failed",
             "cwe": "N/A",
             "details": f"Error: {str(e)}",
-            "remediation": "Check logs and installation"
+            "remediation": "Check Nikto installation"
         })
 
     return unified_findings
+
+
+def parse_nikto_text(output: str) -> list:
+    """Parse Nikto text output for vulnerabilities."""
+    findings = []
+    
+    patterns = [
+        (r'\+ (\d{6,}): (.+?) - (.+)', 'High'),
+        (r'\+ Server: (.+)', 'Low'),
+        (r'\+ Retrieved .+ headers: (.+)', 'Medium'),
+        (r'\+ .*(?:admin|backup|config|password|secret).+', 'Medium'),
+        (r'\+ (?:OSVDB-\d+): (.+)', 'Medium'),
+        (r'\+ HTTP method may allow (.+)', 'Medium'),
+    ]
+    
+    for line in output.split('\n'):
+        for pattern, default_sev in patterns:
+            match = re.search(pattern, line, re.IGNORECASE)
+            if match:
+                groups = match.groups()
+                finding_title = groups[1] if len(groups) > 1 else groups[0]
+                
+                severity = default_sev
+                if any(kw in finding_title.lower() for kw in ['sql', 'xss', 'injection', 'traversal']):
+                    severity = 'High'
+                elif any(kw in finding_title.lower() for kw in ['password', 'admin', 'backup', 'config']):
+                    severity = 'Medium'
+                
+                findings.append({
+                    "tool": "Nikto",
+                    "severity": severity,
+                    "finding": f"Nikto Detection: {finding_title[:100]}",
+                    "cwe": "CWE-693",
+                    "details": line[:300],
+                    "remediation": "Review and remediate the finding"
+                })
+                break
+    
+    return findings
