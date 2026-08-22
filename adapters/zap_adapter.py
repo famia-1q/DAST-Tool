@@ -63,6 +63,35 @@ def _is_zap_running():
         return False
 
 
+def _api_actually_usable():
+    """
+    Liveness (_is_zap_running) only proves *something* answers on the
+    port - it doesn't prove the API key/config matches what we need.
+    Action-tier endpoints enforce the API key even when view-tier ones
+    sometimes don't, so we probe one that has no destructive side
+    effects. A 403 here means a stale/misconfigured daemon is squatting
+    on our port and must be killed rather than reused.
+    """
+    try:
+        r = requests.get(
+            f"{ZAP_BASE}/JSON/spider/action/setOptionMaxDepth/",
+            params={"Integer": "5"},
+            timeout=5,
+        )
+        return r.status_code == 200
+    except requests.exceptions.RequestException:
+        return False
+
+
+def _kill_stale_daemon():
+    print("[ZAP] Existing daemon on this port is misconfigured (API check failed). Killing it.")
+    try:
+        subprocess.run(["pkill", "-9", "-f", f"port {ZAP_PORT}"], check=False)
+    except Exception:
+        pass
+    time.sleep(2)
+
+
 def start_zap_daemon():
     """
     Starts ZAP in headless daemon mode if it isn't already running,
@@ -74,8 +103,10 @@ def start_zap_daemon():
     global _zap_process
 
     if _is_zap_running():
-        print("[ZAP] Daemon already running, reusing it.")
-        return True
+        if _api_actually_usable():
+            print("[ZAP] Daemon already running and API confirmed usable, reusing it.")
+            return True
+        _kill_stale_daemon()
 
     zap_path = shutil.which("zaproxy") or shutil.which("zap.sh") or shutil.which("owasp-zap")
 
