@@ -228,25 +228,57 @@ def _get_alerts(target_url):
 
 
 def _alerts_to_findings(alerts):
+    """
+    ZAP raises one alert entry per URL where an issue is found, so a
+    single missing-header issue on 6 pages shows up as 6 near-identical
+    rows. For a client-facing report that's noise: group by (name, risk)
+    and merge the affected URLs into one finding with one details block.
+    """
+    groups = {}   # (name, risk) -> {"urls": [...], "description":..., "solution":..., "cweid":...}
+    order = []    # preserves first-seen order for stable output
+
+    for alert in alerts:
+        name = str(alert.get("alert") or alert.get("name") or "ZAP Alert")[:150]
+        risk = alert.get("risk") or "Informational"
+        url = alert.get("url", "")
+        key = (name, risk)
+
+        if key not in groups:
+            groups[key] = {
+                "urls": [],
+                "description": alert.get("description", ""),
+                "solution": alert.get("solution") or "Review and remediate the identified issue.",
+                "cweid": alert.get("cweid", "N/A"),
+            }
+            order.append(key)
+
+        if url and url not in groups[key]["urls"]:
+            groups[key]["urls"].append(url)
+
     findings = []
 
-    for alert in alerts[:100]:
-        name = alert.get("alert") or alert.get("name") or "ZAP Alert"
-        risk = alert.get("risk") or "Informational"
+    for name, risk in order[:100]:
+        g = groups[(name, risk)]
         severity = _severity_from_risk(risk)
-        url = alert.get("url", "")
-        description = alert.get("description", "")
-        solution = alert.get("solution") or "Review and remediate the identified issue."
-        cwe = alert.get("cweid", "N/A")
+        cwe = g["cweid"]
+
+        urls = g["urls"]
+        url_count = len(urls)
+        shown_urls = urls[:10]
+        url_block = "\n".join(f"  - {u}" for u in shown_urls)
+        if url_count > len(shown_urls):
+            url_block += f"\n  ...and {url_count - len(shown_urls)} more URL(s)"
+
+        affected = f"Affected URLs ({url_count}):\n{url_block}" if urls else "URL: N/A"
 
         findings.append(
             _finding(
                 "OWASP ZAP",
                 severity,
-                str(name)[:150],
+                name,
                 cwe=f"CWE-{cwe}" if str(cwe).isdigit() else str(cwe),
-                details=f"URL: {url}\n{str(description)[:600]}",
-                remediation=str(solution)[:600],
+                details=f"{affected}\n\n{str(g['description'])[:600]}",
+                remediation=str(g["solution"])[:600],
             )
         )
 
