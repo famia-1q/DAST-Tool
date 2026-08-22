@@ -157,6 +157,17 @@ def _scan_pe_security(pe, file_name):
                     remediation="N/A"
                 )
             )
+        else:
+            findings.append(
+                _finding(
+                    "pefile",
+                    "Low",
+                    "Control Flow Guard Not Enabled",
+                    cwe="CWE-691",
+                    details=f"'{file_name}' does not have Control Flow Guard enabled.",
+                    remediation="Recompile with /guard:cf (MSVC) to enable Control Flow Guard."
+                )
+            )
 
         if aslr_enabled and dep_enabled:
             findings.append(
