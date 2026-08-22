@@ -7,9 +7,8 @@
     commercial client handover as-is.
 
     This is a REASONABLE BASELINE, not a substitute for a maintained
-    threat-intel feed. See the accompanying README section on adding a
-    properly licensed ruleset (e.g. YARA-Forge's "core" license-clean
-    feed) alongside this one for production malware-family coverage.
+    threat-intel feed. See README for adding a properly licensed
+    ruleset (e.g. YARA-Forge's "core" feed) alongside this one.
 
     Rules are grouped by category. Add more .yar files to this
     directory as needed - it's scanned recursively.
@@ -42,16 +41,16 @@ rule Suspicious_Packer_Section_Names
 rule High_Entropy_Section_Indicator
 {
     meta:
-        description = "Common packer stub marker strings indicating runtime unpacking"
+        description = "UPX runtime-unpacker stub marker, without the normal DOS-stub string preceding it - suggests a modified/stripped stub"
         severity = "Medium"
         category = "packing"
 
     strings:
-        $s1 = "This program cannot be run in DOS mode" ascii
-        $s3 = "UPX!" ascii
+        $dos_stub = "This program cannot be run in DOS mode" ascii
+        $upx_marker = "UPX!" ascii
 
     condition:
-        $s3 and not $s1
+        $upx_marker and not $dos_stub
 }
 
 // ---------------------------------------------------------------------
@@ -61,16 +60,18 @@ rule High_Entropy_Section_Indicator
 rule Embedded_PE_In_Overlay
 {
     meta:
-        description = "A second embedded MZ/PE header, often used for droppers/stub loaders"
+        description = "A second full MZ+PE header pair (valid e_lfanew offset to a real PE signature), suggesting an embedded/dropped executable rather than incidental byte overlap"
         severity = "High"
         category = "dropper"
 
     strings:
-        $mz = "MZ"
-        $pe = "PE\x00\x00"
+        // MZ header followed by a plausible e_lfanew (PE offset) and the actual PE signature
+        // shortly after - far more specific than a loose "MZ" + "PE" substring match, which
+        // produces false positives on ordinary compiled binaries.
+        $mz_pe_pair = /MZ.{56,64}PE\x00\x00/
 
     condition:
-        #mz > 1 and $pe
+        #mz_pe_pair >= 1
 }
 
 rule Embedded_Base64_PE_Header
@@ -187,15 +188,22 @@ rule Private_Key_Header
 rule Hardcoded_IPv4_Address
 {
     meta:
-        description = "Hardcoded IPv4 addresses (potential C2/callback) - expect noise, review manually"
+        description = "Hardcoded non-loopback, non-broadcast IPv4 address - excludes 127.x/0.0.0.0/255.255.255.255 which are near-universal in compiled binaries and not meaningful signal on their own"
         severity = "Low"
         category = "network"
 
     strings:
         $ip = /[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/ ascii
+        $loopback = "127.0.0.1" ascii
+        $unspecified = "0.0.0.0" ascii
+        $broadcast = "255.255.255.255" ascii
 
     condition:
-        $ip
+        $ip and not (
+            $loopback in (@ip[1]-3..@ip[1]+3) or
+            $unspecified in (@ip[1]-3..@ip[1]+3) or
+            $broadcast in (@ip[1]-3..@ip[1]+3)
+        )
 }
 
 rule Suspicious_Onion_Address
@@ -278,7 +286,7 @@ rule Anti_Analysis_Strings
 }
 
 // ---------------------------------------------------------------------
-// Web shells (relevant given ZAP/web pipeline overlap)
+// Web shells
 // ---------------------------------------------------------------------
 
 rule PHP_Webshell_Indicators

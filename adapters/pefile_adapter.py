@@ -31,6 +31,19 @@ def _finding(
     }
 
 
+def _normalize_yara_severity(raw):
+    """Map a YARA rule's meta.severity value to the dashboard's severity vocabulary."""
+    mapping = {
+        "critical": "Critical",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low",
+        "info": "Info",
+        "informational": "Info",
+    }
+    return mapping.get(str(raw).strip().lower(), "Medium")
+
+
 def _run_command(command, timeout=60):
     """
     Safely execute an external command.
@@ -420,7 +433,7 @@ def _scan_yara(file_path):
         print(f"[*] Running YARA using rules: {rules_dir}")
 
         result = _run_command(
-            [yara_path, "-r", rules_dir, file_path],
+            [yara_path, "-r", "-m", rules_dir, file_path],   # -m: include rule meta (severity) in output
             timeout=90
         )
 
@@ -443,11 +456,18 @@ def _scan_yara(file_path):
             matches = output.splitlines()
 
             for match in matches[:30]:
+                parts = match.split(maxsplit=1)
+                rule_name = parts[0] if parts else "Unknown"
+                rest = parts[1] if len(parts) > 1 else ""
+
+                sev_match = re.search(r'severity="([^"]+)"', rest)
+                severity = _normalize_yara_severity(sev_match.group(1)) if sev_match else "Medium"
+
                 findings.append(
                     _finding(
                         "yara",
-                        "High",
-                        "YARA Rule Match Detected",
+                        severity,
+                        f"YARA Rule Match: {rule_name}",
                         cwe="N/A",
                         details=match[:500],
                         remediation=(

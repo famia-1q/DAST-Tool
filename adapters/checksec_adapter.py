@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+import re
 
 import os
 import shutil
@@ -31,6 +32,19 @@ def _finding(tool, severity, finding, cwe="N/A", details="", remediation="N/A"):
         "details": details,
         "remediation": remediation,
     }
+
+
+def _normalize_yara_severity(raw):
+    """Map a YARA rule's meta.severity value to the dashboard's severity vocabulary."""
+    mapping = {
+        "critical": "Critical",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low",
+        "info": "Info",
+        "informational": "Info",
+    }
+    return mapping.get(str(raw).strip().lower(), "Medium")
 
 
 def scan_deb_target(file_path):
@@ -465,12 +479,18 @@ def scan_deb_target(file_path):
                 else:
 
                     matched = False
+                    # rule_name -> {"severity":..., "files": [...]}
+                    match_groups = {}
 
                     for rule_file in rule_files:
 
                         try:
                             result = subprocess.run(
-                                [yara_path, "-r", rule_file, extract_dir],
+                                [
+                                    yara_path, "-r",
+                                    "-m",              # print matched meta (gives us severity)
+                                    rule_file, extract_dir
+                                ],
                                 capture_output=True,
                                 text=True,
                                 timeout=120
@@ -482,17 +502,23 @@ def scan_deb_target(file_path):
                                     continue
 
                                 matched = True
+                                # -m output looks like:
+                                # RuleName [severity="High",category="dropper"] /path/to/file
                                 parts = line.split(maxsplit=1)
                                 rule_name = parts[0]
+                                rest = parts[1] if len(parts) > 1 else ""
 
-                                findings.append(_finding(
-                                    "yara",
-                                    "High",
-                                    f"YARA Rule Match: {rule_name}",
-                                    "CWE-506",
-                                    f"YARA rule matched package content: {line[:500]}",
-                                    "Investigate the matched content and determine whether it is malicious or unauthorized."
-                                ))
+                                sev_match = re.search(r'severity="([^"]+)"', rest)
+                                severity = _normalize_yara_severity(sev_match.group(1)) if sev_match else "Medium"
+
+                                # file path is whatever follows the ] metadata block
+                                file_part = rest.split("]", 1)[-1].strip() if "]" in rest else rest
+
+                                if rule_name not in match_groups:
+                                    match_groups[rule_name] = {"severity": severity, "files": []}
+
+                                if file_part and file_part not in match_groups[rule_name]["files"]:
+                                    match_groups[rule_name]["files"].append(file_part)
 
                         except subprocess.TimeoutExpired:
                             findings.append(_finding(
@@ -511,6 +537,22 @@ def scan_deb_target(file_path):
                             details=f"Scanned using {len(rule_files)} YARA rule file(s).",
                             remediation="N/A"
                         ))
+                    else:
+                        for rule_name, info in match_groups.items():
+                            files = info["files"]
+                            shown = files[:10]
+                            file_block = "\n".join(f"  - {f}" for f in shown)
+                            if len(files) > len(shown):
+                                file_block += f"\n  ...and {len(files) - len(shown)} more file(s)"
+
+                            findings.append(_finding(
+                                "yara",
+                                info["severity"],
+                                f"YARA Rule Match: {rule_name}",
+                                "CWE-506",
+                                f"Matched in {len(files)} file(s):\n{file_block}",
+                                "Investigate the matched content and determine whether it is malicious or unauthorized."
+                            ))
 
     except subprocess.TimeoutExpired:
         findings.append(_finding(
