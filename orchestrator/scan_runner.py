@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""
+NOTE: This module is used by the standalone test/portfolio scripts
+(test_full_pipeline.py, test_apk_pipeline.py, final_project_confirmation.py,
+etc.) - it is NOT imported by the live Flask app (app.py). The live web app
+calls adapters/zap_adapter.py directly, which uses the ZAP daemon + REST API
+approach, not the older -quickurl subprocess call still used by
+run_zap_scan() below. Keep both working: this file's functions stay for the
+test scripts that import them, but don't treat run_zap_scan() here as
+reflecting how the live dashboard actually scans.
+"""
 import os
 import sys
 import json

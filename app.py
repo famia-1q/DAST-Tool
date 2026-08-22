@@ -233,4 +233,9 @@ if __name__ == '__main__':
     print("  iSeeWaves Unified DAST & Binary Analysis Scanner")
     print("  Access at: http://localhost:5000")
     print("=" * 60)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Bound to localhost only: debug=True enables the Werkzeug interactive
+    # debugger, which allows arbitrary code execution from the browser if
+    # an unhandled exception is triggered. Combined with host='0.0.0.0' it
+    # would be reachable from any device on the network, not just this
+    # machine. If you ever need LAN/remote access, turn debug OFF first.
+    app.run(host='127.0.0.1', port=5000, debug=True)

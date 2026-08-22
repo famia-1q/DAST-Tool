@@ -1,0 +1,848 @@
+#!/usr/bin/env python3
+
+import json
+import re
+import shutil
+import subprocess
+
+
+def _finding(
+    tool,
+    severity,
+    finding,
+    cwe="N/A",
+    details="",
+    remediation="N/A",
+):
+    """Create a finding in the project's unified finding format."""
+    return {
+        "tool": tool,
+        "severity": severity,
+        "finding": finding,
+        "cwe": cwe,
+        "details": details,
+        "remediation": remediation,
+    }
+
+
+def _normalize_severity(value):
+    """Normalize Nikto severity values into dashboard severity names."""
+
+    value = str(value).strip().lower()
+
+    severity_map = {
+        "0": "Info",
+        "1": "Low",
+        "2": "Medium",
+        "3": "High",
+        "4": "Critical",
+        "info": "Info",
+        "informational": "Info",
+        "low": "Low",
+        "medium": "Medium",
+        "moderate": "Medium",
+        "high": "High",
+        "critical": "Critical",
+    }
+
+    return severity_map.get(value, "Low")
+
+
+def _upgrade_severity_from_text(severity, text):
+    """
+    Increase severity for clearly dangerous vulnerability indicators.
+
+    This intentionally does not classify every Nikto finding as High.
+    """
+    lower = text.lower()
+
+    critical_keywords = [
+        "remote code execution",
+        "remote command execution",
+        "arbitrary command execution",
+    ]
+
+    high_keywords = [
+        "sql injection",
+        "command injection",
+        "cross-site scripting",
+        "stored xss",
+        "reflected xss",
+        "path traversal",
+        "directory traversal",
+        "remote code",
+        "arbitrary file upload",
+        "arbitrary file write",
+    ]
+
+    medium_keywords = [
+        "password",
+        "credential",
+        "admin",
+        "backup",
+        "config",
+        "directory listing",
+        "information disclosure",
+        "sensitive information",
+    ]
+
+    if any(keyword in lower for keyword in critical_keywords):
+        return "Critical"
+
+    if any(keyword in lower for keyword in high_keywords):
+        return "High"
+
+    if any(keyword in lower for keyword in medium_keywords):
+        if severity in ("Info", "Low"):
+            return "Medium"
+
+    return severity
+
+
+def _parse_nikto_json(output):
+    """
+    Parse Nikto JSON output when available.
+
+    Returns a list of unified findings.
+    """
+
+    findings = []
+
+    if not output or not output.strip():
+        return findings
+
+    try:
+        data = json.loads(output)
+    except json.JSONDecodeError:
+        return findings
+
+    vulnerabilities = []
+
+    if isinstance(data, list):
+        vulnerabilities = data
+
+    elif isinstance(data, dict):
+
+        if isinstance(data.get("vulnerabilities"), list):
+            vulnerabilities = data["vulnerabilities"]
+
+        elif isinstance(data.get("findings"), list):
+            vulnerabilities = data["findings"]
+
+        elif isinstance(data.get("results"), list):
+            vulnerabilities = data["results"]
+
+        elif "msg" in data or "message" in data:
+            vulnerabilities = [data]
+
+    for vuln in vulnerabilities[:100]:
+
+        if not isinstance(vuln, dict):
+            continue
+
+        message = (
+            vuln.get("msg")
+            or vuln.get("message")
+            or vuln.get("description")
+            or vuln.get("title")
+            or ""
+        )
+
+        message = str(message).strip()
+
+        if not message:
+            continue
+
+        lower_message = message.lower()
+
+        if "no vulnerabilities" in lower_message:
+            continue
+
+        severity = _normalize_severity(
+            vuln.get("severity", "1")
+        )
+
+        severity = _upgrade_severity_from_text(
+            severity,
+            message
+        )
+
+        uri = (
+            vuln.get("uri")
+            or vuln.get("url")
+            or "/"
+        )
+
+        description = (
+            vuln.get("description")
+            or message
+        )
+
+        cwe = (
+            vuln.get("cweid")
+            or vuln.get("cwe")
+            or "CWE-693"
+        )
+
+        findings.append(
+            _finding(
+                "Nikto",
+                severity,
+                message[:180],
+                cwe=cwe,
+                details=(
+                    f"URI: {uri}\n"
+                    f"{str(description)[:500]}"
+                ),
+                remediation=(
+                    "Review the identified Nikto finding and "
+                    "apply appropriate security controls."
+                ),
+            )
+        )
+
+    return findings
+
+
+def parse_nikto_text(output):
+    """
+    Parse standard Nikto console output.
+
+    Examples handled include:
+
+        + [999100] /: Uncommon header(s) 'x-cdn-cache-status'
+        + Server: Apache
+        + OSVDB-12345: ...
+        + 123456: ...
+        + HTTP method may allow ...
+        + /admin/: ...
+        + Retrieved ... headers: ...
+    """
+
+    findings = []
+
+    if not output:
+        return findings
+
+    seen = set()
+
+    for raw_line in output.splitlines():
+
+        line = raw_line.strip()
+
+        if not line:
+            continue
+
+        if not line.startswith("+"):
+            continue
+
+        lower_line = line.lower()
+
+        # Ignore Nikto status/control messages.
+        ignored_patterns = [
+            "target ip:",
+            "target hostname:",
+            "target port:",
+            "ssl info:",
+            "platform:",
+            "start time:",
+            "end time:",
+            "scan terminated:",
+            "host maximum execution time",
+            "no cgi directories found",
+            "cgi tests skipped",
+            "multiple ips found:",
+            "error: failed to check for updates",
+        ]
+
+        if any(
+            pattern in lower_line
+            for pattern in ignored_patterns
+        ):
+            continue
+
+        finding_id = "N/A"
+        title = line[1:].strip()
+
+        # ---------------------------------------------------------
+        # Nikto numeric plugin format
+        #
+        # Example:
+        # + [999100] /: Uncommon header(s) 'x-cdn-cache-status'
+        # ---------------------------------------------------------
+
+        match = re.match(
+            r"\+\s*\[(\d+)\]\s*(.*)",
+            line
+        )
+
+        if match:
+            finding_id = match.group(1)
+            title = match.group(2).strip()
+
+        else:
+
+            # -----------------------------------------------------
+            # OSVDB format
+            # -----------------------------------------------------
+
+            match = re.match(
+                r"\+\s*(OSVDB-\d+):\s*(.*)",
+                line,
+                re.IGNORECASE
+            )
+
+            if match:
+                finding_id = match.group(1)
+                title = match.group(2).strip()
+
+            else:
+
+                # -------------------------------------------------
+                # Older Nikto numeric format
+                # -------------------------------------------------
+
+                match = re.match(
+                    r"\+\s*(\d{6,}):\s*(.*)",
+                    line
+                )
+
+                if match:
+                    finding_id = match.group(1)
+                    title = match.group(2).strip()
+
+        if not title:
+            continue
+
+        # Remove trailing separators.
+        title = title.strip(" -:")
+
+        key = f"{finding_id}:{title.lower()}"
+
+        if key in seen:
+            continue
+
+        seen.add(key)
+
+        # ---------------------------------------------------------
+        # Determine severity
+        # ---------------------------------------------------------
+
+        severity = "Low"
+
+        # Explicitly dangerous findings.
+        if any(
+            keyword in title.lower()
+            for keyword in [
+                "sql injection",
+                "command injection",
+                "cross-site scripting",
+                "stored xss",
+                "reflected xss",
+                "path traversal",
+                "directory traversal",
+                "remote code execution",
+                "arbitrary file upload",
+                "arbitrary file write",
+            ]
+        ):
+            severity = "High"
+
+        # Sensitive configuration / exposure.
+        elif any(
+            keyword in title.lower()
+            for keyword in [
+                "password",
+                "credential",
+                "admin",
+                "backup",
+                "config",
+                "directory listing",
+                "information disclosure",
+                "sensitive information",
+            ]
+        ):
+            severity = "Medium"
+
+        # Informational fingerprints.
+        elif any(
+            keyword in title.lower()
+            for keyword in [
+                "server:",
+                "uncommon header",
+                "retrieved",
+                "http method",
+                "allowed methods",
+                "header",
+            ]
+        ):
+            severity = "Info"
+
+        # ---------------------------------------------------------
+        # CWE mapping
+        # ---------------------------------------------------------
+
+        title_lower = title.lower()
+
+        if any(
+            keyword in title_lower
+            for keyword in [
+                "sql injection",
+                "command injection",
+                "cross-site scripting",
+                "xss",
+            ]
+        ):
+            cwe = "CWE-89"
+
+            if "xss" in title_lower or "cross-site scripting" in title_lower:
+                cwe = "CWE-79"
+
+        elif any(
+            keyword in title_lower
+            for keyword in [
+                "path traversal",
+                "directory traversal",
+            ]
+        ):
+            cwe = "CWE-22"
+
+        elif "password" in title_lower:
+            cwe = "CWE-521"
+
+        elif any(
+            keyword in title_lower
+            for keyword in [
+                "information disclosure",
+                "sensitive information",
+            ]
+        ):
+            cwe = "CWE-200"
+
+        elif "http method" in title_lower:
+            cwe = "CWE-749"
+
+        elif "directory listing" in title_lower:
+            cwe = "CWE-548"
+
+        else:
+            cwe = "CWE-693"
+
+        # ---------------------------------------------------------
+        # Remediation
+        # ---------------------------------------------------------
+
+        if severity in ("High", "Critical"):
+            remediation = (
+                "Investigate the affected endpoint immediately, "
+                "validate exploitability, and remediate the "
+                "underlying vulnerability."
+            )
+
+        elif severity == "Medium":
+            remediation = (
+                "Review the affected endpoint/configuration and "
+                "apply appropriate security controls."
+            )
+
+        elif severity == "Low":
+            remediation = (
+                "Review the finding and harden the affected "
+                "configuration where appropriate."
+            )
+
+        else:
+            remediation = (
+                "Review the detected configuration or header and "
+                "determine whether it should be exposed."
+            )
+
+        findings.append(
+            _finding(
+                "Nikto",
+                severity,
+                (
+                    f"Nikto [{finding_id}]: "
+                    f"{title[:180]}"
+                ),
+                cwe=cwe,
+                details=line[:600],
+                remediation=remediation,
+            )
+        )
+
+    return findings[:100]
+
+
+def _network_failure_finding(
+    target_url,
+    stdout,
+    stderr,
+    returncode,
+):
+    """
+    Convert common Nikto connectivity failures into a useful
+    dashboard finding.
+    """
+
+    combined = (
+        (stdout or "")
+        + "\n"
+        + (stderr or "")
+    ).lower()
+
+    connectivity_keywords = [
+        "unable to connect",
+        "connection refused",
+        "connection timed out",
+        "timed out",
+        "network is unreachable",
+        "failed to connect",
+        "could not connect",
+        "host not found",
+        "name or service not known",
+        "no route to host",
+        "connection reset",
+        "ssl connection",
+        "handshake failed",
+    ]
+
+    if any(
+        keyword in combined
+        for keyword in connectivity_keywords
+    ):
+        return _finding(
+            "Nikto",
+            "Warning",
+            "Target unreachable or blocking scans",
+            cwe="N/A",
+            details=(
+                f"Target: {target_url}\n"
+                f"Return code: {returncode}\n"
+                f"{(stderr or stdout or '')[:600]}"
+            ),
+            remediation=(
+                "Verify target accessibility, DNS resolution, "
+                "IPv4/IPv6 connectivity, TLS configuration, "
+                "firewall rules, CDN/WAF behavior, and whether "
+                "automated scanning is permitted."
+            ),
+        )
+
+    return None
+
+
+def _timeout_finding(target_url):
+    """Return a standardized Nikto timeout finding."""
+
+    return _finding(
+        "Nikto",
+        "Warning",
+        "Scan timed out",
+        cwe="N/A",
+        details=(
+            f"Nikto exceeded the configured execution time "
+            f"while scanning {target_url}."
+        ),
+        remediation=(
+            "Verify target accessibility and WAF behavior. "
+            "Consider reducing scan scope or increasing the "
+            "allowed scan duration."
+        ),
+    )
+
+
+def scan_web_target(target_url):
+    """
+    Run Nikto against a web target and return unified findings.
+
+    The function intentionally keeps Nikto output parsing inside
+    this adapter so app.py receives a consistent list of findings.
+    """
+
+    if not isinstance(target_url, str):
+        return [
+            _finding(
+                "Nikto",
+                "Error",
+                "Invalid URL",
+                details="Target URL must be a string.",
+                remediation=(
+                    "Provide a valid HTTP or HTTPS URL."
+                ),
+            )
+        ]
+
+    target_url = target_url.strip()
+
+    if not target_url.startswith(
+        ("http://", "https://")
+    ):
+        return [
+            _finding(
+                "Nikto",
+                "Error",
+                "Invalid URL format",
+                details=(
+                    "URL must start with http:// or https://"
+                ),
+                remediation=(
+                    "Provide a valid HTTP or HTTPS URL."
+                ),
+            )
+        ]
+
+    nikto_path = shutil.which("nikto")
+
+    if not nikto_path:
+        return [
+            _finding(
+                "Nikto",
+                "Error",
+                "Nikto not installed",
+                details=(
+                    "Nikto executable was not found in PATH."
+                ),
+                remediation=(
+                    "Install Nikto with: "
+                    "sudo apt install nikto"
+                ),
+            )
+        ]
+
+    print(
+        f"[*] Starting Nikto scan against: "
+        f"{target_url}"
+    )
+
+    try:
+
+        command = [
+            nikto_path,
+            "-h",
+            target_url,
+            "-timeout",
+            "15",
+            "-maxtime",
+            "180",
+            "-Tuning",
+            "123456789x",
+        ]
+
+        print(
+            "[*] Nikto command: "
+            + " ".join(command)
+        )
+
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=240,
+            check=False,
+        )
+
+        stdout = result.stdout or ""
+        stderr = result.stderr or ""
+
+        print(
+            f"[*] Nikto exit code: "
+            f"{result.returncode}"
+        )
+
+        print(
+            f"[*] Nikto stdout length: "
+            f"{len(stdout)}"
+        )
+
+        print(
+            f"[*] Nikto stderr length: "
+            f"{len(stderr)}"
+        )
+
+        findings = []
+
+        # =========================================================
+        # 1. Try JSON
+        # =========================================================
+
+        json_findings = _parse_nikto_json(stdout)
+
+        if json_findings:
+            findings.extend(json_findings)
+
+        # =========================================================
+        # 2. Parse text output
+        #
+        # This is important because Nikto commonly produces
+        # console output instead of JSON.
+        # =========================================================
+
+        text_findings = parse_nikto_text(
+            stdout + "\n" + stderr
+        )
+
+        if text_findings:
+
+            existing_keys = {
+                (
+                    f.get("tool"),
+                    f.get("finding"),
+                )
+                for f in findings
+            }
+
+            for finding in text_findings:
+
+                key = (
+                    finding.get("tool"),
+                    finding.get("finding"),
+                )
+
+                if key not in existing_keys:
+                    findings.append(finding)
+                    existing_keys.add(key)
+
+        # =========================================================
+        # 3. Connectivity handling
+        # =========================================================
+
+        if not findings:
+
+            network_finding = (
+                _network_failure_finding(
+                    target_url,
+                    stdout,
+                    stderr,
+                    result.returncode,
+                )
+            )
+
+            if network_finding:
+                findings.append(
+                    network_finding
+                )
+
+        # =========================================================
+        # 4. Successful scan with no findings
+        # =========================================================
+
+        if not findings:
+
+            findings.append(
+                _finding(
+                    "Nikto",
+                    "Info",
+                    "No vulnerabilities detected",
+                    cwe="N/A",
+                    details=(
+                        "Nikto completed the scan but did not "
+                        "identify any configured findings."
+                    ),
+                    remediation="N/A",
+                )
+            )
+
+        # =========================================================
+        # 5. Remove duplicate findings
+        # =========================================================
+
+        unique_findings = []
+        seen = set()
+
+        for finding in findings:
+
+            key = (
+                finding.get("tool"),
+                finding.get("severity"),
+                finding.get("finding"),
+            )
+
+            if key in seen:
+                continue
+
+            seen.add(key)
+            unique_findings.append(finding)
+
+        print(
+            f"[*] Nikto findings returned: "
+            f"{len(unique_findings)}"
+        )
+
+        return unique_findings[:100]
+
+    except subprocess.TimeoutExpired:
+
+        print(
+            "[!] Nikto exceeded the adapter timeout."
+        )
+
+        return [
+            _timeout_finding(target_url)
+        ]
+
+    except FileNotFoundError:
+
+        return [
+            _finding(
+                "Nikto",
+                "Error",
+                "Nikto executable not found",
+                details=(
+                    "The Nikto executable disappeared "
+                    "or is not accessible."
+                ),
+                remediation=(
+                    "Install Nikto with: "
+                    "sudo apt install nikto"
+                ),
+            )
+        ]
+
+    except Exception as exc:
+
+        print(
+            f"[!] Nikto scan failed: {exc}"
+        )
+
+        return [
+            _finding(
+                "Nikto",
+                "Error",
+                "Nikto scan failed",
+                details=str(exc),
+                remediation=(
+                    "Verify the Nikto installation, "
+                    "target URL, network connectivity, "
+                    "and scan configuration."
+                ),
+            )
+        ]
+
+
+# Backward-compatible alias.
+#
+# Some older code/tests may import parse_nikto_text through
+# this name.
+def parse_nikto_output(output):
+    return parse_nikto_text(output)
+
+
+if __name__ == "__main__":
+    import sys
+
+    if len(sys.argv) != 2:
+        print(
+            "Usage: python nikto_adapter.py "
+            "<http(s)://target>"
+        )
+        raise SystemExit(1)
+
+    result = scan_web_target(sys.argv[1])
+
+    print(
+        json.dumps(
+            result,
+            indent=2,
+        )
+    )
