@@ -5,10 +5,25 @@ import re
 import shutil
 import subprocess
 import tempfile
+import hashlib
+import zipfile
 
 
 MAX_APK_SIZE = 500 * 1024 * 1024
 DECOMPILE_TIMEOUT = 180
+
+# ------------------------------------------------------------------
+# In-memory record of every APK hash this process has scanned.
+# This is what lets us tell you, on the dashboard, whether "two
+# different scans returned the same result" because:
+#   (a) you actually uploaded the exact same file twice, or
+#   (b) two genuinely different files just happen to have identical
+#       manifest/code findings (common with template apps whose
+#       differences live only in assets/resources).
+# NOTE: this resets when the Flask process restarts. If you need it
+# to survive restarts, swap this dict for a small SQLite table.
+# ------------------------------------------------------------------
+_SEEN_APK_HASHES = {}
 
 
 def _finding(tool, severity, finding, cwe="N/A", details="", remediation="N/A"):
@@ -22,18 +37,66 @@ def _finding(tool, severity, finding, cwe="N/A", details="", remediation="N/A"):
     }
 
 
+def _sha256_of_file(file_path, chunk_size=1024 * 1024):
+    hasher = hashlib.sha256()
+    with open(file_path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(chunk_size), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
+
+
+def _zip_structure_fingerprint(file_path):
+    """
+    Fingerprint the APK's internal file listing (names + sizes),
+    independent of any --no-assets / --no-src flags used later during
+    decompilation. Two APKs with genuinely different content (even if
+    just different images/resources) will get different fingerprints
+    here, which is useful for confirming the adapter really is looking
+    at two distinct files.
+
+    Returns (entry_count, fingerprint_hash) or (0, None) on failure.
+    """
+    try:
+        with zipfile.ZipFile(file_path) as zf:
+            entries = sorted(
+                f"{info.filename}:{info.file_size}"
+                for info in zf.infolist()
+            )
+        fingerprint = hashlib.sha256(
+            "\n".join(entries).encode("utf-8", errors="ignore")
+        ).hexdigest()
+        return len(entries), fingerprint
+    except Exception:
+        return 0, None
+
+
+def _apktool_version(apktool_path):
+    try:
+        result = subprocess.run(
+            [apktool_path, "--version"],
+            capture_output=True,
+            text=True,
+            timeout=15
+        )
+        return (result.stdout or result.stderr or "").strip() or "unknown"
+    except Exception:
+        return "unknown"
+
+
 def scan_apk_target(file_path):
     """
     Static Android APK analysis.
 
     Pipeline:
       1. Validate APK
-      2. Decompile with apktool
-      3. Inspect AndroidManifest.xml
-      4. Search for potentially hardcoded secrets
-      5. Search for insecure storage indicators
-      6. Check network security configuration
-      7. Return findings
+      2. Hash + fingerprint the file (proves which file was actually scanned,
+         and flags exact duplicate uploads)
+      3. Decompile with apktool
+      4. Inspect AndroidManifest.xml (package/version/permissions + risk flags)
+      5. Search for potentially hardcoded secrets
+      6. Search for insecure storage indicators
+      7. Check network security configuration
+      8. Return findings
     """
 
     findings = []
@@ -88,16 +151,60 @@ def scan_apk_target(file_path):
             remediation="Scan an APK smaller than 500 MB."
         )]
 
+    # ------------------------------------------------------------
+    # Identity check: hash + zip fingerprint FIRST, before anything
+    # else can fail. This is the single most important addition for
+    # debugging "two different APKs gave the same result" -- it puts
+    # the proof of *which file was scanned* directly in the report.
+    # ------------------------------------------------------------
+    file_hash = _sha256_of_file(file_path)
+    entry_count, zip_fingerprint = _zip_structure_fingerprint(file_path)
+
+    duplicate_of = _SEEN_APK_HASHES.get(file_hash)
+    _SEEN_APK_HASHES[file_hash] = os.path.basename(file_path)
+
+    if duplicate_of:
+        findings.append(_finding(
+            "APK Analyzer",
+            "Warning",
+            "Duplicate APK detected (identical SHA-256)",
+            details=(
+                f"This upload is byte-for-byte identical to a previously "
+                f"scanned file ('{duplicate_of}'). If you expected a "
+                f"different app, double-check the file you're uploading -- "
+                f"the adapter is correctly reporting identical findings "
+                f"because it is, in fact, the same file."
+            ),
+            remediation="Confirm you're selecting the intended APK before scanning."
+        ))
+
+    findings.append(_finding(
+        "APK Analyzer",
+        "Info",
+        "Scanned File Identity",
+        details=(
+            f"Filename: {os.path.basename(file_path)} | "
+            f"Size: {file_size} bytes | "
+            f"SHA-256: {file_hash} | "
+            f"Zip entries: {entry_count} | "
+            f"Structure fingerprint: {zip_fingerprint}"
+        ),
+        remediation="N/A -- informational, use this to confirm which file was analyzed."
+    ))
+
     apktool_path = shutil.which("apktool")
 
     if not apktool_path:
-        return [_finding(
+        findings.append(_finding(
             "apktool",
             "Error",
             "apktool not installed",
-            details="apktool was not found in PATH.",
+            details="apktool was not found in PATH. All apktool-dependent checks below were skipped.",
             remediation="Install apktool with: sudo apt install apktool"
-        )]
+        ))
+        return findings
+
+    apktool_version = _apktool_version(apktool_path)
 
     # Verify that the APK is actually a ZIP/APK before invoking apktool.
     try:
@@ -109,7 +216,7 @@ def scan_apk_target(file_path):
         )
 
         if zip_test.returncode != 0:
-            return [_finding(
+            findings.append(_finding(
                 "APK Analyzer",
                 "Error",
                 "Invalid or corrupted APK",
@@ -118,24 +225,30 @@ def scan_apk_target(file_path):
                     f"{(zip_test.stderr or zip_test.stdout).strip()[:500]}"
                 ),
                 remediation="Provide a valid Android APK file."
-            )]
+            ))
+            return findings
 
     except FileNotFoundError:
         # unzip is optional; apktool will perform the actual validation.
         pass
     except subprocess.TimeoutExpired:
-        return [_finding(
+        findings.append(_finding(
             "APK Analyzer",
             "Error",
             "APK validation timed out",
             details="Archive validation exceeded 30 seconds.",
             remediation="Try a smaller or valid APK."
-        )]
+        ))
+        return findings
 
-    decompile_dir = tempfile.mkdtemp(prefix="dast_apk_")
+    # Unique per-invocation decompile dir (tied to the file hash too,
+    # so it's trivially traceable in logs which run produced which dir).
+    decompile_dir = tempfile.mkdtemp(prefix=f"dast_apk_{file_hash[:12]}_")
 
     try:
         print(f"[*] Decompiling APK: {file_path}")
+        print(f"[*] SHA-256: {file_hash}")
+        print(f"[*] apktool version: {apktool_version}")
         print(f"[*] Output directory: {decompile_dir}")
 
         try:
@@ -155,24 +268,36 @@ def scan_apk_target(file_path):
             )
 
         except subprocess.TimeoutExpired:
-            return [_finding(
+            findings.append(_finding(
                 "apktool",
                 "Error",
                 "Decompilation timed out",
                 details=f"APK decompilation exceeded {DECOMPILE_TIMEOUT} seconds.",
                 remediation="Try a smaller APK or increase the configured timeout."
-            )]
+            ))
+            return findings
 
         if result.returncode != 0:
             error_output = (result.stderr or result.stdout or "").strip()
 
-            return [_finding(
+            findings.append(_finding(
                 "apktool",
                 "Error",
                 "APK decompilation failed",
-                details=error_output[:1000] or "apktool returned a non-zero exit code.",
-                remediation="Ensure the file is a valid APK and compatible with apktool."
-            )]
+                details=(
+                    f"apktool {apktool_version} failed on this specific file "
+                    f"(SHA-256 {file_hash[:16]}...). Raw output: "
+                    f"{error_output[:1000] or 'apktool returned a non-zero exit code.'}"
+                ),
+                remediation=(
+                    "This is often caused by an outdated apktool that doesn't "
+                    "recognize newer AAPT2 resource formats. Try: "
+                    "'apktool empty-framework-dir --force' then update apktool, "
+                    "or run 'apktool d <file> -o <dir> -f' manually to see the "
+                    "full traceback."
+                )
+            ))
+            return findings
 
         print("[*] APK decompiled successfully")
 
@@ -202,6 +327,30 @@ def scan_apk_target(file_path):
                     errors="ignore"
                 ) as f:
                     manifest = f.read()
+
+                # Package identity -- shown so you can visually confirm
+                # on the dashboard that two scans really are two different apps.
+                package_match = re.search(r'package\s*=\s*"([^"]+)"', manifest)
+                version_name_match = re.search(r'android:versionName\s*=\s*"([^"]+)"', manifest)
+                version_code_match = re.search(r'android:versionCode\s*=\s*"([^"]+)"', manifest)
+                permissions = re.findall(
+                    r'<uses-permission[^>]*android:name\s*=\s*"([^"]+)"',
+                    manifest,
+                    re.IGNORECASE
+                )
+
+                findings.append(_finding(
+                    "apktool",
+                    "Info",
+                    "Application Identity",
+                    details=(
+                        f"Package: {package_match.group(1) if package_match else 'unknown'} | "
+                        f"Version name: {version_name_match.group(1) if version_name_match else 'unknown'} | "
+                        f"Version code: {version_code_match.group(1) if version_code_match else 'unknown'} | "
+                        f"Declared permissions: {len(permissions)}"
+                    ),
+                    remediation="N/A -- informational."
+                ))
 
                 # Debuggable application
                 if re.search(
@@ -293,7 +442,6 @@ def scan_apk_target(file_path):
             ".gradle",
             ".js",
             ".html",
-            ".xml"
         }
 
         files_scanned = 0
@@ -472,7 +620,6 @@ def parse_yara_report(report_path):
     normalized findings compatible with the unified pipeline.
     """
     import json
-    import os
 
     findings = []
 
@@ -522,5 +669,3 @@ def parse_yara_report(report_path):
         })
 
     return findings
-
-
