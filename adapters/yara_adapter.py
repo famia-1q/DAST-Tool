@@ -10,7 +10,10 @@ import zipfile
 
 
 MAX_APK_SIZE = 500 * 1024 * 1024
-DECOMPILE_TIMEOUT = 180
+DECOMPILE_TIMEOUT = 600           # was 180 - too short for real-world APKs;
+                                   # full resource+smali decompile of a normal
+                                   # sized app routinely takes several minutes
+DECOMPILE_TIMEOUT_NO_RES = 240    # fallback pass, resources skipped, much faster
 
 # ------------------------------------------------------------------
 # In-memory record of every APK hash this process has scanned.
@@ -268,14 +271,55 @@ def scan_apk_target(file_path):
             )
 
         except subprocess.TimeoutExpired:
-            findings.append(_finding(
-                "apktool",
-                "Error",
-                "Decompilation timed out",
-                details=f"APK decompilation exceeded {DECOMPILE_TIMEOUT} seconds.",
-                remediation="Try a smaller APK or increase the configured timeout."
-            ))
-            return findings
+            # Full decode (resources + smali) timed out. Retry with -r
+            # (skip resource decoding) - much faster, and still gives us
+            # AndroidManifest.xml + smali for the permission/secret/cert
+            # pinning checks below, instead of returning nothing at all.
+            print(f"[*] Full decode exceeded {DECOMPILE_TIMEOUT}s, retrying without resources...")
+            shutil.rmtree(decompile_dir, ignore_errors=True)
+            os.makedirs(decompile_dir, exist_ok=True)
+
+            try:
+                result = subprocess.run(
+                    [
+                        apktool_path,
+                        "d",
+                        file_path,
+                        "-o",
+                        decompile_dir,
+                        "-f",
+                        "-r",              # skip resource decoding
+                        "--no-assets"
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=DECOMPILE_TIMEOUT_NO_RES
+                )
+                findings.append(_finding(
+                    "apktool",
+                    "Info",
+                    "Partial decompilation (resources skipped)",
+                    details=(
+                        f"Full decompilation exceeded {DECOMPILE_TIMEOUT}s, so resource "
+                        "decoding was skipped to finish in time. Manifest and smali-based "
+                        "findings below are still valid; resource/strings.xml-based checks "
+                        "were not performed on this run."
+                    ),
+                    remediation="Re-run with a longer DECOMPILE_TIMEOUT if full resource analysis is needed."
+                ))
+            except subprocess.TimeoutExpired:
+                findings.append(_finding(
+                    "apktool",
+                    "Error",
+                    "Decompilation timed out",
+                    details=(
+                        f"APK decompilation exceeded {DECOMPILE_TIMEOUT}s (full) and "
+                        f"{DECOMPILE_TIMEOUT_NO_RES}s (resources skipped, retry). "
+                        "This APK is unusually large or apktool is struggling with it."
+                    ),
+                    remediation="Try a smaller APK, or increase DECOMPILE_TIMEOUT / DECOMPILE_TIMEOUT_NO_RES."
+                ))
+                return findings
 
         if result.returncode != 0:
             error_output = (result.stderr or result.stdout or "").strip()
