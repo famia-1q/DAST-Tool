@@ -15,10 +15,10 @@ import json
 import shutil
 import tempfile
 import subprocess
-import requests # Make sure 'requests' is in requirements.txt
-import subprocess
+import requests  # Make sure 'requests' is in requirements.txt
 
 MAX_FILE_SIZE = 500 * 1024 * 1024  # 500 MB limit to prevent DoS
+
 
 def classify_input(target):
     if target.startswith("http://") or target.startswith("https://"):
@@ -31,65 +31,6 @@ def classify_input(target):
         return "deb"
     else:
         raise ValueError("Unsupported input. Provide a URL, .apk/.ipa, .exe, or .deb file.")
-
-# ... [Keep all the run_zap_scan, run_nikto_scan, run_mobsf_scan, run_pefile_scan, etc. functions exactly as they were in your original file] ...
-# NOTE: Since I am providing the webhook fix, just replace the trigger_webhook function at the bottom:
-
-def trigger_webhook(reports):
-    # ✅ FIX: Load webhook URL from environment variable (No hardcoded URLs!)
-    webhook_url = os.environ.get('WEBHOOK_URL')
-    
-    if not webhook_url:
-        print("\n[Orchestrator] ️ No WEBHOOK_URL environment variable set. Skipping webhook dispatch.")
-        # Still print payload for local debugging
-        status = "PASS" if reports else "PARTIAL_FAIL"
-        message = "Scan completed. Ready for adapter parsing." if reports else "Scan completed with warnings."
-        webhook_payload = {
-            "tool": "Unified DAST & Binary Analysis Orchestrator",
-            "status": status,
-            "reports": reports,
-            "message": message
-        }
-        print(json.dumps(webhook_payload, indent=2))
-        return
-
-    status = "PASS" if reports else "PARTIAL_FAIL"
-    message = "Scan completed. Ready for adapter parsing." if reports else "Scan completed with warnings."
-    
-    webhook_payload = {
-        "tool": "Unified DAST & Binary Analysis Orchestrator",
-        "status": status,
-        "reports": reports,
-        "message": message
-    }
-    
-    try:
-        # ✅ REAL FLOW: Actually send the HTTP POST request
-        print(f"\n[Orchestrator] 📡 Sending webhook to: {webhook_url}")
-        response = requests.post(webhook_url, json=webhook_payload, timeout=10)
-        if response.status_code in [200, 201]:
-            print(f"[Orchestrator] ✅ Webhook sent successfully to CI/CD pipeline.")
-        else:
-            print(f"[Orchestrator] ⚠️ Webhook failed with status {response.status_code}: {response.text}")
-    except Exception as e:
-        print(f"[Orchestrator] ❌ Webhook dispatch error: {str(e)}")
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python3 orchestrator/scan_runner.py <URL, .apk/.ipa, .exe, or .deb file>")
-        sys.exit(1)
-
-    target = sys.argv[1]
-    try:
-        input_type = classify_input(target)
-    except ValueError as e:
-        print(f"[Orchestrator] ❌ {e}")
-        sys.exit(1)
-
-    reports = []
-    # Note: For CLI usage, you would call the specific run functions here based on input_type.
-    # Since the Flask app (app.py) is your main UI, this CLI script is mostly for direct testing.
-    trigger_webhook(reports)
 
 
 def run_zap_scan(target_url):
@@ -268,6 +209,7 @@ def run_nikto_scan(target_url):
         print(f"[Nikto] Scan failed: {exc}")
         return None
 
+
 def run_mobsf_scan(apk_path):
     """
     Backward-compatible MobSF runner.
@@ -275,9 +217,6 @@ def run_mobsf_scan(apk_path):
     Returns the path to a JSON report when MobSF is configured
     and the scan succeeds. Returns None when MobSF is unavailable.
     """
-
-    import json
-    import os
 
     if not os.path.isfile(apk_path):
         print(f"[MobSF] APK not found: {apk_path}")
@@ -292,12 +231,6 @@ def run_mobsf_scan(apk_path):
 
     if not api_key:
         print("[MobSF] MOBSF_API_KEY is not configured. Skipping scan.")
-        return None
-
-    try:
-        import requests
-    except ImportError:
-        print("[MobSF] Python requests package is not installed.")
         return None
 
     try:
@@ -391,3 +324,59 @@ def run_mobsf_scan(apk_path):
     except Exception as exc:
         print(f"[MobSF] Scan failed: {exc}")
         return None
+
+
+def trigger_webhook(reports):
+    webhook_url = os.environ.get('WEBHOOK_URL')
+
+    if not webhook_url:
+        print("\n[Orchestrator] No WEBHOOK_URL environment variable set. Skipping webhook dispatch.")
+        # Still print payload for local debugging
+        status = "PASS" if reports else "PARTIAL_FAIL"
+        message = "Scan completed. Ready for adapter parsing." if reports else "Scan completed with warnings."
+        webhook_payload = {
+            "tool": "Unified DAST & Binary Analysis Orchestrator",
+            "status": status,
+            "reports": reports,
+            "message": message
+        }
+        print(json.dumps(webhook_payload, indent=2))
+        return
+
+    status = "PASS" if reports else "PARTIAL_FAIL"
+    message = "Scan completed. Ready for adapter parsing." if reports else "Scan completed with warnings."
+
+    webhook_payload = {
+        "tool": "Unified DAST & Binary Analysis Orchestrator",
+        "status": status,
+        "reports": reports,
+        "message": message
+    }
+
+    try:
+        print(f"\n[Orchestrator] Sending webhook to: {webhook_url}")
+        response = requests.post(webhook_url, json=webhook_payload, timeout=10)
+        if response.status_code in [200, 201]:
+            print("[Orchestrator] Webhook sent successfully to CI/CD pipeline.")
+        else:
+            print(f"[Orchestrator] Webhook failed with status {response.status_code}: {response.text}")
+    except Exception as e:
+        print(f"[Orchestrator] Webhook dispatch error: {str(e)}")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python3 orchestrator/scan_runner.py <URL, .apk/.ipa, .exe, or .deb file>")
+        sys.exit(1)
+
+    target = sys.argv[1]
+    try:
+        input_type = classify_input(target)
+    except ValueError as e:
+        print(f"[Orchestrator] {e}")
+        sys.exit(1)
+
+    reports = []
+    # Note: For CLI usage, you would call the specific run functions here based on input_type.
+    # Since the Flask app (app.py) is your main UI, this CLI script is mostly for direct testing.
+    trigger_webhook(reports)

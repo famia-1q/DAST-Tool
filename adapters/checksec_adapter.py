@@ -6,9 +6,20 @@ import shutil
 import stat
 import subprocess
 import tempfile
+import hashlib
 
 
 MAX_DEB_SIZE = 500 * 1024 * 1024
+
+_SEEN_DEB_HASHES = {}
+
+
+def _sha256_of_file(file_path, chunk_size=1024 * 1024):
+    hasher = hashlib.sha256()
+    with open(file_path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(chunk_size), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
 
 
 def _finding(tool, severity, finding, cwe="N/A", details="", remediation="N/A"):
@@ -86,16 +97,52 @@ def scan_deb_target(file_path):
             remediation="Scan a DEB package smaller than 500 MB."
         )]
 
+    # ------------------------------------------------------------
+    # Identity (hash + duplicate-upload detection) -- done up front,
+    # before any dpkg dependency, so it's always reported even if
+    # dpkg-deb is missing.
+    # ------------------------------------------------------------
+
+    file_hash = _sha256_of_file(file_path)
+    duplicate_of = _SEEN_DEB_HASHES.get(file_hash)
+    _SEEN_DEB_HASHES[file_hash] = os.path.basename(file_path)
+
+    if duplicate_of:
+        findings.append(_finding(
+            "DEB Analyzer",
+            "Warning",
+            "Duplicate DEB Package Detected (identical SHA-256)",
+            details=(
+                f"This upload is byte-for-byte identical to a previously "
+                f"scanned file ('{duplicate_of}'). If you expected a "
+                f"different package, double-check the file you're uploading."
+            ),
+            remediation="Confirm you're selecting the intended .deb package before scanning."
+        ))
+
+    findings.append(_finding(
+        "DEB Analyzer",
+        "Info",
+        "Scanned File Identity",
+        details=(
+            f"Filename: {os.path.basename(file_path)} | "
+            f"Size: {file_size} bytes | "
+            f"SHA-256: {file_hash}"
+        ),
+        remediation="N/A -- informational, use this to confirm which file was analyzed."
+    ))
+
     dpkg_path = shutil.which("dpkg-deb")
 
     if not dpkg_path:
-        return [_finding(
+        findings.append(_finding(
             "dpkg-deb",
             "Error",
             "dpkg-deb not installed",
             details="dpkg-deb was not found in PATH.",
             remediation="Install dpkg with: sudo apt install dpkg"
-        )]
+        ))
+        return findings
 
     extract_dir = tempfile.mkdtemp(prefix="dast_deb_")
 
@@ -112,13 +159,14 @@ def scan_deb_target(file_path):
         )
 
         if info_result.returncode != 0:
-            return [_finding(
+            findings.append(_finding(
                 "dpkg-deb",
                 "Error",
                 "Invalid DEB package",
                 details=(info_result.stderr or info_result.stdout).strip()[:1000],
                 remediation="Provide a valid Debian .deb package."
-            )]
+            ))
+            return findings
 
         # ------------------------------------------------------------
         # 2. Extract package

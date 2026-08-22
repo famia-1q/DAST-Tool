@@ -19,7 +19,14 @@ insecure_connections.txt
 manifest_analysis.txt
 secrets_found.txt
 yara_report.txt
-nikto_*.json
+nikto_*
+extracted/
+
+# Backup / stray editor files (DO NOT COMMIT)
+*.bak
+*.before_*
+*.orig
+*.swp
 
 # Environment variables (NEVER COMMIT)
 .env

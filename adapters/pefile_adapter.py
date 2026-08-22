@@ -2,7 +2,9 @@
 
 import os
 import re
+import json
 import shutil
+import hashlib
 import subprocess
 
 try:
@@ -40,6 +42,17 @@ def _run_command(command, timeout=60):
         timeout=timeout,
         check=False
     )
+
+
+_SEEN_EXE_HASHES = {}
+
+
+def _sha256_of_file(file_path, chunk_size=1024 * 1024):
+    hasher = hashlib.sha256()
+    with open(file_path, "rb") as handle:
+        for chunk in iter(lambda: handle.read(chunk_size), b""):
+            hasher.update(chunk)
+    return hasher.hexdigest()
 
 
 def _validate_file(file_path):
@@ -494,6 +507,57 @@ def scan_exe_target(file_path):
         ]
 
     file_name = os.path.basename(file_path)
+
+    # ==========================================================
+    # 0. IDENTITY (hash + duplicate-upload detection)
+    # ==========================================================
+
+    try:
+        file_size = os.path.getsize(file_path)
+        file_hash = _sha256_of_file(file_path)
+
+        duplicate_of = _SEEN_EXE_HASHES.get(file_hash)
+        _SEEN_EXE_HASHES[file_hash] = file_name
+
+        if duplicate_of:
+            findings.append(
+                _finding(
+                    "PE Analyzer",
+                    "Warning",
+                    "Duplicate Executable Detected (identical SHA-256)",
+                    details=(
+                        f"This upload is byte-for-byte identical to a "
+                        f"previously scanned file ('{duplicate_of}'). If you "
+                        f"expected a different binary, double-check the file "
+                        f"you're uploading."
+                    ),
+                    remediation="Confirm you're selecting the intended executable before scanning."
+                )
+            )
+
+        findings.append(
+            _finding(
+                "PE Analyzer",
+                "Info",
+                "Scanned File Identity",
+                details=(
+                    f"Filename: {file_name} | "
+                    f"Size: {file_size} bytes | "
+                    f"SHA-256: {file_hash}"
+                ),
+                remediation="N/A -- informational, use this to confirm which file was analyzed."
+            )
+        )
+    except OSError as exc:
+        findings.append(
+            _finding(
+                "PE Analyzer",
+                "Warning",
+                "Could not hash file",
+                details=str(exc),
+                remediation="Verify file permissions and disk access."
+            )
+        )
 
     # ==========================================================
     # 1. PEFILE
