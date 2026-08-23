@@ -96,3 +96,11 @@ Open your browser and navigate to:
 
 http://localhost:5000
 
+## 🔒 Third-Party YARA Rules
+
+[#-third-party-yara-rules](#-third-party-yara-rules)
+
+- **`rules/starter_rules.yar`** and **`rules/starter_rules_extended.yar`** — original to this project, no third-party licensing restrictions.
+- **`rules/yara-forge/`** — bundles the [YARA-Forge](https://github.com/YARAHQ/yara-forge) `core` package, which aggregates rules from multiple open-source YARA rule repositories under mixed licenses, including **GPLv2** (Yara-Rules/rules) and the **Elastic License 2.0** (Elastic's protections-artifacts). Original per-source license headers are preserved inside the bundled `.yar` file(s). No modifications were made to the rule logic itself.
+- These rules are used strictly for **detection/pattern-matching** at scan time — no rule content is redistributed, sold, or repackaged as a standalone product.
+- Rule set last synced: *(fill in date of last `yara-forge` pull — helps the integration team know how stale it is at handover)*.
