@@ -238,4 +238,4 @@ if __name__ == '__main__':
     # an unhandled exception is triggered. Combined with host='0.0.0.0' it
     # would be reachable from any device on the network, not just this
     # machine. If you ever need LAN/remote access, turn debug OFF first.
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
